@@ -1,0 +1,97 @@
+digraph OsmiaArchitecture {
+  graph [rankdir=TB, size="7.5,6!", splines=spline, nodesep=0.22, ranksep=0.55, fontname="Helvetica",
+         bgcolor="white", compound=true];
+  node  [shape=box, style="filled,rounded", fontname="Helvetica", fontsize=10,
+         penwidth=1.1, margin="0.14,0.07"];
+  edge  [fontname="Helvetica", fontsize=8.5, penwidth=1.0, arrowsize=0.7];
+
+  // ============ Layer 1: ALMaSS core ============
+  subgraph cluster_core {
+    label = <<b>1. ALMaSS core infrastructure</b>&nbsp;&nbsp;<font point-size="9" color="#5B6472">shared with all ALMaSS species models</font>>;
+    labeljust="l"; fontname="Helvetica"; fontsize=11.5; style="filled";
+    color="#B9C9DE"; fillcolor="#F2F5FA"; penwidth=1.2; margin=14;
+
+    Landscape [label="Landscape\n1 m² raster · weather · vegetation\nfarm management · pollen & nectar", fillcolor="#DCE6F2", color="#7E96B8"];
+    PopMan    [label="Population_Manager\nDoFirst → BeginStep → Step\n→ EndStep → DoLast", fillcolor="#DCE6F2", color="#7E96B8"];
+    TALMaSS   [label="TALMaSSObject → TAnimal\n→ TAnimalToxicity\nobject pool · location · body burden", fillcolor="#DCE6F2", color="#7E96B8"];
+    { rank=same; Landscape; PopMan; TALMaSS; }
+  }
+
+  // ============ Layer 2: Osmia management ============
+  subgraph cluster_mgmt {
+    label = <<b>2. Osmia population and resource management</b>>;
+    labeljust="l"; fontname="Helvetica"; fontsize=11.5; style="filled";
+    color="#B4CDB7"; fillcolor="#F3F8F3"; penwidth=1.2; margin=14;
+
+    OPM  [label="Osmia_Population_Manager\nschedules the day · seasonal flags\nmaternal-investment lookup curves", fillcolor="#D8E8D9", color="#7FA382"];
+    ONM  [label="Osmia_Nest_Manager\n+ OsmiaPolygonEntry\nnest-site capacity and occupancy", fillcolor="#D8E8D9", color="#7FA382"];
+    OPPM [label="OsmiaParasitoid_Population_Manager\n+ OsmiaParasitoidSubPopulation\nnot in the Formal Model; off by default", fillcolor="#F0F0F0", color="#A8A8A8", style="filled,rounded,dashed", fontcolor="#5A5A5A"];
+    { rank=same; OPM; ONM; OPPM; }
+  }
+
+  // ============ Layer 3: individuals ============
+  subgraph cluster_ind {
+    label = <<b>3. Osmia individuals and nests</b>>;
+    labeljust="l"; fontname="Helvetica"; fontsize=11.5; style="filled";
+    color="#DBC3A8"; fillcolor="#FBF6F1"; penwidth=1.2; margin=14;
+
+    Base [label="Osmia_Base\ncommon state + the entire species parameter set (static members)", fillcolor="#F0DFCC", color="#C09A72"];
+
+    subgraph cluster_chain {
+      label = <<font point-size="9"><b>life-stage chain</b> — each stage inherits its predecessor, so the class hierarchy follows the ontogenetic sequence</font>>;
+      labeljust="l"; style="filled"; color="#D3B896"; fillcolor="#F7EDE2"; penwidth=1.0; margin=10;
+      Egg   [label="Osmia_Egg",      fillcolor="#F6E8D8", color="#C09A72"];
+      Larva [label="Osmia_Larva",    fillcolor="#F6E8D8", color="#C09A72"];
+      Pre   [label="Osmia_Prepupa",  fillcolor="#F6E8D8", color="#C09A72"];
+      Pupa  [label="Osmia_Pupa",     fillcolor="#F6E8D8", color="#C09A72"];
+      Coc   [label="Osmia_InCocoon", fillcolor="#F6E8D8", color="#C09A72"];
+      Fem   [label="Osmia_Female\nthe only mobile,\nforaging stage", fillcolor="#EACFAF", color="#A87C4A", penwidth=1.7];
+      { rank=same; Egg; Larva; Pre; Pupa; Coc; Fem; }
+    }
+
+    Nest [label="Osmia_Nest\nordered list of brood cells; list position = position in the tube", fillcolor="#F0DFCC", color="#C09A72"];
+  }
+
+  // ---- inheritance ----
+  edge [color="#8A6D4E", arrowhead=onormal, arrowsize=0.9, penwidth=1.25, fontcolor="#7A5F42"];
+  TALMaSS -> Base [label="  inherits  "];
+  TALMaSS -> Nest [label="  inherits  "];
+  Base -> Egg [label=" "];
+  edge [label=""];
+  Egg -> Larva; Larva -> Pre; Pre -> Pupa; Pupa -> Coc; Coc -> Fem;
+
+  edge [color="#5F8262", fontcolor="#4C6B4F"];
+  PopMan -> OPM  [label="  inherits  "];
+  PopMan -> OPPM [label="  inherits  ", style=dashed, color="#A8A8A8", fontcolor="#7A7A7A"];
+
+  // ---- ownership / control ----
+  edge [color="#3F6B96", arrowhead=vee, style=solid, penwidth=1.35, arrowsize=0.8, fontcolor="#33587C"];
+  OPM -> ONM [label="  owns  "];
+  OPM -> Egg [label="  steps every individual,\n  every day (parallel Step loop)  ", lhead=cluster_chain];
+  ONM -> Nest [label="  creates and\n  releases  "];
+
+  // ---- data flow ----
+  edge [color="#9A5C7A", arrowhead=vee, style=dashed, penwidth=1.1, arrowsize=0.75, fontcolor="#7E4A63"];
+  Landscape -> OPM [label="  daily temperature, flying hours,\n  polygon area and type  "];
+  Fem -> Landscape [label="  pollen and pesticide queries  ", constraint=false];
+  Fem -> Nest      [label="  provisions and lays into  "];
+
+  // invisible ordering: force the three layers to stack top-to-bottom
+  edge [style=invis, label="", weight=20, arrowhead=none];
+  PopMan -> ONM; TALMaSS -> OPPM; OPM -> Base; ONM -> Base; Fem -> Nest;
+
+  // ---- key ----
+  subgraph cluster_key {
+    label=<<b>Key</b>>; labeljust="l"; fontsize=10.5; fontname="Helvetica";
+    style="filled"; color="#D0D0D0"; fillcolor="#FCFCFC"; margin=8;
+    k1 [shape=plaintext, style="", fillcolor="none", label=<
+      <table border="0" cellborder="0" cellspacing="0" cellpadding="3">
+        <tr><td align="left"><font color="#8A6D4E" point-size="12">──▷</font></td><td align="left"><font point-size="9.5">inherits from</font></td>
+            <td align="left"><font color="#3F6B96" point-size="12">──▶</font></td><td align="left"><font point-size="9.5">owns / controls</font></td>
+            <td align="left"><font color="#9A5C7A" point-size="12">--▶</font></td><td align="left"><font point-size="9.5">reads / writes data</font></td>
+            <td align="left"><font color="#909090" point-size="12">▭</font></td><td align="left"><font point-size="9.5">implemented but inactive by default</font></td></tr>
+      </table>>];
+  }
+  edge [style=invis, label="", weight=30, arrowhead=none];
+  Nest -> k1;
+}
