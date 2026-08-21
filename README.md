@@ -16,7 +16,7 @@ The source code is authoritative for implemented behaviour. The Formal Model is 
 
 The amended returned Doxygen build contains 104 HTML pages. The acceptance check examined 16,538 local references and found no broken file references, broken anchors, missing expected documentation terms or non-empty Doxygen warning lines.
 
-Browse locally by opening `doxygen_output/html/index.html`. After Step 4, the public site will be **{{GITHUB_PAGES_URL}}**.
+Browse locally by opening `doxygen_output/html/index.html`. After Step 4, the public site will be https://thealmass.github.io/osmia-midox/.
 
 ## Repository layout
 
