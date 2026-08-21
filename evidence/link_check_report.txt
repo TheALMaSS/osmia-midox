@@ -1,0 +1,9 @@
+Osmia MIDox Doxygen link check
+HTML pages: 104
+Local references checked: 16538
+Broken file references: 0
+Broken anchor references: 0
+Expected documentation terms missing: 0
+Non-empty Doxygen warning lines: 0
+
+RESULT: PASS

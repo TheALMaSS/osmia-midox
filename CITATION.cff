@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this implementation documentation, cite the archived release."
+title: "MIDox implementation of the ALMaSS Osmia bicornis model"
+type: software
+version: "1.0.0"
+date-released: "2026-08-21"
+authors:
+  - family-names: Topping
+    given-names: Christopher J.
+  - family-names: Ziółkowska
+    given-names: Ewa
+  - family-names: Duan
+    given-names: Xiaodong
+repository-code: "https://github.com/TheALMaSS/osmia-midox.git"
+url: "https://thealmass.github.io/osmia-midox/"
+doi: "{{ZENODO_VERSION_DOI}}"
+abstract: >-
+  Source-linked implementation documentation for the post-calibration ALMaSS
+  Osmia bicornis agent-based model, including annotated C++ source, verified
+  Doxygen HTML, a narrative manuscript and a source-verified parameter appendix.
+keywords:
+  - agent-based model
+  - Osmia bicornis
+  - ALMaSS
+  - MIDox
+  - Doxygen
+license: BSD-3-Clause

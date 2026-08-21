@@ -1,0 +1,23 @@
+{
+  "source_parameters": 100,
+  "appendix_rows": 100,
+  "unique_source_keys": 100,
+  "unique_appendix_keys": 100,
+  "unique_appendix_variables": 100,
+  "missing_from_appendix": [],
+  "extra_in_appendix": [],
+  "formal_model_differences": 15,
+  "formal_model_unchanged": 85,
+  "no_effect": 8,
+  "conditional": 20,
+  "active": 72,
+  "missing_ranges": 95,
+  "provenance_counts": {
+    "Assumed": 23,
+    "Calibrated": 18,
+    "Field data": 6,
+    "Literature": 25,
+    "Technical": 16,
+    "Undocumented": 12
+  }
+}

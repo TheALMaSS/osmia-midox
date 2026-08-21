@@ -5,7 +5,6 @@ This repository documents the reviewed, post-calibration C++ implementation of t
 The release contains:
 
 - annotated *Osmia* source and the support headers needed for Doxygen;
-- a verified Doxygen site in `doxygen_output/html/`;
 - the narrative MIDox manuscript in `manuscript/`;
 - the source-verified 100-parameter appendix in `supplement/`;
 - figure sources and process evidence.
@@ -24,7 +23,6 @@ Browse locally by opening `doxygen_output/html/index.html`. After Step 4, the pu
 |:---|:---|
 | `src/` | Annotated *Osmia* code and Doxygen support headers |
 | `docs/` | Doxygen front-page source and stylesheet |
-| `doxygen_output/html/` | Accepted, generated documentation site |
 | `manuscript/` | MIDox paper source and Figure 1 |
 | `supplement/` | Source-verified parameter appendix |
 | `figures/` | PNG, SVG and Graphviz figure sources |

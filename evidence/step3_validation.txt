@@ -1,0 +1,12 @@
+Osmia MIDox Step 3 package validation
+Parameter rows: 100
+Unique parameter keys: 100
+Manuscript Doxygen links: 17
+Broken manuscript Doxygen links: 0
+Duplicate manuscript prose paragraphs: 0
+Osmia_Calibrated.cfg files included: 0
+Symbolic links: 0
+Publication placeholders: {{GITHUB_PAGES_URL}}, {{GITHUB_REPOSITORY_URL}}, {{RELEASE_DATE}}, {{RELEASE_TAG}}, {{ZENODO_VERSION_DOI}}
+Packaged HTML pages: 104
+Errors: 0
+RESULT: PASS

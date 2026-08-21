@@ -1,0 +1,38 @@
+digraph OsmiaMIDoxArchitecture {
+  graph [rankdir=TB, bgcolor="white", pad=0.25, nodesep=0.35, ranksep=0.55,
+         fontname="Arial", fontsize=12, labelloc="t",
+         label="ALMaSS Osmia bicornis implementation architecture"];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10,
+        color="#455A64", fillcolor="#F7F9FA", margin="0.12,0.08"];
+  edge [fontname="Arial", fontsize=9, color="#546E7A", arrowsize=0.75];
+
+  almass [label="ALMaSS services\nlandscape · weather · farm events\npesticide engine · daily scheduler", fillcolor="#E8EEF4"];
+  manager [label="Osmia_Population_Manager\ninitialisation · daily environmental state\nobject creation · seasonal flags · outputs", fillcolor="#D9EAF2", penwidth=1.5];
+  nest_manager [label="Osmia_Nest_Manager\npolygon capacity and nest allocation", fillcolor="#E8F2E8"];
+  nest [label="Osmia_Nest\nbrood cells and provision records", fillcolor="#E8F2E8"];
+  female [label="Osmia_Female\nnest search · provisioning · dispersal", fillcolor="#F7E9CC", penwidth=1.5];
+  paras [label="Parasitism\ndefault exposure-time calculation\noptional mechanistic subsystem", fillcolor="#F3E4ED"];
+
+  subgraph cluster_life {
+    label="Agent life-stage objects";
+    color="#B0BEC5";
+    style="rounded";
+    egg [label="Osmia_Egg"];
+    larva [label="Osmia_Larva"];
+    prepupa [label="Osmia_Prepupa"];
+    pupa [label="Osmia_Pupa"];
+    cocoon [label="Osmia_InCocoon"];
+    egg -> larva -> prepupa -> pupa -> cocoon [label="new successor object"];
+  }
+
+  almass -> manager [label="framework state and schedule"];
+  manager -> nest_manager [label="initialise and refresh"];
+  nest_manager -> nest [label="allocate capacity"];
+  manager -> egg [label="create starting and successor agents"];
+  cocoon -> female [label="female emergence"];
+  cocoon -> manager [label="male removed at emergence", style=dashed];
+  female -> nest [label="occupy and provision", dir=both];
+  nest -> egg [label="cell points to current stage", style=dashed];
+  female -> paras [label="cell-open exposure"];
+  paras -> nest [label="parasitism state"];
+}

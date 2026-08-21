@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920" role="img" aria-labelledby="title desc">
+  <title id="title">ALMaSS Osmia bicornis implementation architecture</title>
+  <desc id="desc">The ALMaSS services supply the Osmia population manager, which coordinates life-stage agents, nests, adult females and parasitism.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#546e7a"/>
+    </marker>
+    <style>
+      .title{font:700 34px Arial,sans-serif;fill:#263238}.label{font:700 23px Arial,sans-serif;fill:#263238}.small{font:19px Arial,sans-serif;fill:#37474f}.edge{font:17px Arial,sans-serif;fill:#455a64}.box{stroke:#455a64;stroke-width:2.5;rx:18;ry:18}.line{stroke:#546e7a;stroke-width:3;fill:none;marker-end:url(#arrow)}.dash{stroke-dasharray:9 8}.cluster{fill:#fbfcfd;stroke:#90a4ae;stroke-width:2.5;rx:22;ry:22}
+    </style>
+  </defs>
+  <rect width="1600" height="980" fill="#ffffff"/>
+  <text x="800" y="52" text-anchor="middle" class="title">ALMaSS <tspan font-style="italic">Osmia bicornis</tspan> implementation architecture</text>
+
+  <rect x="390" y="85" width="820" height="105" class="box" fill="#e8eef4"/>
+  <text x="800" y="122" text-anchor="middle" class="label">ALMaSS services</text>
+  <text x="800" y="157" text-anchor="middle" class="small">landscape · weather · farm events · pesticide engine · daily scheduler</text>
+
+  <path d="M800 190 L800 230" class="line"/>
+  <text x="825" y="219" class="edge">framework state and schedule</text>
+  <rect x="360" y="235" width="880" height="125" class="box" fill="#d9eaf2"/>
+  <text x="800" y="278" text-anchor="middle" class="label">Osmia_Population_Manager</text>
+  <text x="800" y="316" text-anchor="middle" class="small">initialisation · daily environmental state · object creation · seasonal flags · outputs</text>
+
+  <rect x="70" y="435" width="420" height="100" class="box" fill="#e8f2e8"/>
+  <text x="280" y="474" text-anchor="middle" class="label">Osmia_Nest_Manager</text>
+  <text x="280" y="507" text-anchor="middle" class="small">polygon capacity and allocation</text>
+  <path d="M620 360 C560 400 500 430 490 455" class="line"/>
+
+  <rect x="70" y="625" width="420" height="105" class="box" fill="#e8f2e8"/>
+  <text x="280" y="666" text-anchor="middle" class="label">Osmia_Nest</text>
+  <text x="280" y="700" text-anchor="middle" class="small">brood cells and provision records</text>
+  <path d="M280 535 L280 625" class="line"/>
+  <text x="300" y="587" class="edge">allocate capacity</text>
+
+  <rect x="555" y="415" width="970" height="285" class="cluster"/>
+  <text x="585" y="453" class="label">Agent life-stage objects</text>
+  <g>
+    <rect x="590" y="500" width="155" height="72" class="box" fill="#f7f9fa"/><text x="667" y="544" text-anchor="middle" class="small">Egg</text>
+    <rect x="780" y="500" width="155" height="72" class="box" fill="#f7f9fa"/><text x="857" y="544" text-anchor="middle" class="small">Larva</text>
+    <rect x="970" y="500" width="155" height="72" class="box" fill="#f7f9fa"/><text x="1047" y="544" text-anchor="middle" class="small">Prepupa</text>
+    <rect x="1160" y="500" width="155" height="72" class="box" fill="#f7f9fa"/><text x="1237" y="544" text-anchor="middle" class="small">Pupa</text>
+    <rect x="1350" y="500" width="145" height="72" class="box" fill="#f7f9fa"/><text x="1422" y="530" text-anchor="middle" class="small">Adult in</text><text x="1422" y="555" text-anchor="middle" class="small">cocoon</text>
+    <path d="M745 536 L780 536" class="line"/><path d="M935 536 L970 536" class="line"/><path d="M1125 536 L1160 536" class="line"/><path d="M1315 536 L1350 536" class="line"/>
+    <text x="1040" y="620" text-anchor="middle" class="edge">each transition constructs a successor object</text>
+  </g>
+  <path d="M900 360 L900 415" class="line"/>
+  <text x="920" y="400" class="edge">create and schedule</text>
+
+  <rect x="795" y="785" width="430" height="105" class="box" fill="#f7e9cc"/>
+  <text x="1010" y="826" text-anchor="middle" class="label">Osmia_Female</text>
+  <text x="1010" y="861" text-anchor="middle" class="small">nest search · provisioning · dispersal</text>
+  <path d="M1422 572 C1410 725 1230 770 1185 785" class="line"/>
+  <text x="1345" y="718" class="edge">female emergence</text>
+  <path d="M795 838 C660 835 530 785 470 730" class="line"/>
+  <text x="575" y="815" class="edge">occupy and provision</text>
+
+  <rect x="1265" y="785" width="275" height="105" class="box" fill="#f3e4ed"/>
+  <text x="1402" y="826" text-anchor="middle" class="label">Parasitism</text>
+  <text x="1402" y="857" text-anchor="middle" class="small">default exposure-time rule</text>
+  <path d="M1225 838 L1265 838" class="line"/>
+
+  <path d="M490 680 C535 660 555 620 590 555" class="line dash"/>
+  <text x="505" y="641" class="edge">cell points to current stage</text>
+  <path d="M1402 785 C1385 705 1290 680 1215 700" class="line dash"/>
+  <text x="1300" y="748" class="edge">parasitism state</text>
+
+</svg>

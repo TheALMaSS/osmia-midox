@@ -1,0 +1,29 @@
+claim_id,manuscript_section,claim,primary_evidence,secondary_evidence,status
+C01,Abstract,"The implementation declares 100 unique configuration keys: 72 active, 20 conditional and eight no-effect.","parameter_ledger_step3.csv; parameter_reconciliation_step3.json","Osmia.cpp; Osmia_Population_Manager.cpp",verified-amended
+C02,Abstract,"Fifteen declaration defaults differ from the Formal Model.","parameter_reconciliation_step3.json","Formal Model; inline source comparators",verified
+C03,2.1,"The implemented life cycle is egg, larva, prepupa, pupa, adult in cocoon and adult female.","src/Osmia/Osmia.h; src/Osmia/Osmia.cpp","Doxygen class hierarchy",verified
+C04,2.1,"Males are removed at emergence and do not become free-living agents.","src/Osmia/Osmia.cpp:807-864","Osmia_InCocoon Doxygen page",verified
+C05,2.1,"The mechanistic parasitoid subsystem is disabled by default and is not operationally reliable.","src/Osmia/Osmia_Population_Manager.cpp:141 and subsystem methods","Doxygen front page; Appendix A",verified
+C06,2.2,"Life-stage classes form an ontogenetic inheritance chain.","src/Osmia/Osmia.h class declarations","Doxygen class hierarchy",verified
+C07,2.2,"Stage transitions construct a successor and redirect the nest-cell pointer.","Osmia_Population_Manager::CreateObjects; life-stage transition methods","struct_Osmia and Doxygen method pages",verified
+C08,2.3,"Nest densities are multiplied by 0.001 before capacity is created.","Osmia_Nest_Manager::InitOsmiaBeeNesting","Appendix A nest-density row",verified
+C09,2.3,"The 1 km female-density grid is cleared but not populated.","Osmia_Population_Manager::DoFirst and commented update","Doxygen front page",verified
+C10,2.4,"The model uses daily steps, with hourly weather determining flyable hours.","Osmia_Population_Manager::DoFirst","Doxygen front page",verified
+C11,3.1,"Seasonal flags updated in DoLast are available to individuals on the following day.","DoFirst/individual stepping/DoLast ordering","Doxygen scheduling section",verified
+C12,3.2,"Dispersal direction is a uniform integer from 0 to 7.","Osmia_Female::st_Dispersal","Step 1 author confirmation and Doxygen page",verified
+C13,3.2,"The adult age counter is state-dependent rather than a calendar-day counter.","Osmia_Female::st_Develop; st_Dispersal; reproductive state","Appendix A OSMIA_LIFESPAN row",verified
+C14,4.1,"Egg, larva and pupa use linear degree-day accumulation above stage thresholds.","stage st_Develop methods","Doxygen class pages",verified
+C15,4.1,"Prepupal development uses a normalised quadratic response and an individual target within ±10%.","Osmia_Population_Manager::DoFirst; Osmia_Prepupa constructor and st_Develop","Appendix A",verified
+C16,4.1,"Emergence combines overwintering degree-days, a discrete draw and random aspect delay of 0–35 days.","Osmia_InCocoon::st_Develop; Osmia_Nest aspect initialisation","Step 1 author confirmation; Appendix A",verified
+C17,4.1,"Overwinter mortality coefficients operate on a percentage scale.","Osmia_InCocoon::WinterMortality","Appendix A",verified
+C18,4.2,"Sex allocation depends on maternal age and mass and is rounded to a planned female count.","SetParameterValues lookup construction; st_ReproductiveBehaviour","Doxygen method page",verified
+C19,4.2,"OSMIA_MALEMINTARGETPROVISIONMASS is declared but unused; the operational minimum is derived.","declaration and Osmia_Base::SetParameterValues","Appendix A",verified
+C20,4.2,"Provisioning completion uses a hard-coded 4.3-day carry-over threshold.","Osmia_Female::st_ReproductiveBehaviour","annotated source",verified
+C21,4.3,"The active foraging path uses square windows; the unused legacy radial-mask classes have been removed.","Osmia_Female::Forage","Doxygen front page; Appendix A",verified-amended
+C22,4.3,"Monthly pollen and nectar thresholds are loaded but not consulted.","Osmia_Population_Manager initialisation and use audit","Appendix A",verified
+C23,4.3,"The active provisioning path does not deplete landscape pollen.","Osmia_Female reproductive path and source comment","Doxygen front page",verified
+C24,4.4,"Default parasitism scales with cell-open time and is not explicitly capped at one.","Osmia_Female::CalcParaistised","Appendix A",verified
+C25,4.4,"Pesticide behaviour is conditional rather than wholly inactive.","Osmia_Female::OnFarmEvent and pesticide response switches","Appendix A",verified
+C26,5.3,"Population-dynamics output is optional and disabled by default.","configuration declarations and DoLast output path","Appendix A",verified
+C27,6.4,"The amended accepted Doxygen output contains 104 pages and 16,538 checked references with no failures or warnings.","step2_acceptance.md; link_check_report.txt","amended Doxygen return package",verified-amended
+C28,6.4,"The source package records revision ae3857cc39dc4003742de9e4c9efe6ac70771b25.","source archive revision record","docs/index.md",verified
