@@ -1,0 +1,77 @@
+name: Deploy MIDox Documentation
+
+# Publishes the Doxygen output to GitHub Pages.
+#
+# This uses the native Pages deployment (upload-pages-artifact +
+# deploy-pages) rather than pushing a gh-pages branch. The output is
+# ~22 MB across ~1,900 files and regenerates on every push, so keeping
+# it out of git history matters. Set Settings -> Pages -> Source to
+# "GitHub Actions", not "Deploy from a branch". No .nojekyll file is
+# needed on this path — Jekyll never runs.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deployment finish rather than cancelling it midway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen and Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Record tool versions
+        # The archived release should be reproducible. ubuntu-latest
+        # ships whatever Doxygen apt currently has, and output can change
+        # across minor versions, so the versions used are logged here and
+        # quoted in the release notes.
+        run: |
+          doxygen --version
+          dot -V
+
+      - name: Generate documentation
+        run: doxygen Doxyfile
+
+      - name: Fail if Doxygen reported warnings
+        # This build is warning-free as released. Treating any new
+        # warning as a failure stops broken cross-references and
+        # malformed comment blocks reaching the published site.
+        run: |
+          if [ -s doxygen_output/doxygen_warnings.log ]; then
+            echo "::error::Doxygen produced warnings:"
+            cat doxygen_output/doxygen_warnings.log
+            exit 1
+          fi
+          echo "No Doxygen warnings."
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./doxygen_output/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

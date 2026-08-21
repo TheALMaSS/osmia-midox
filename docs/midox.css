@@ -1,0 +1,24 @@
+/* Minimal MIDox additions to Doxygen's responsive HTML theme. */
+
+.contents {
+  max-width: 1120px;
+}
+
+.contents table {
+  width: 100%;
+}
+
+.contents th {
+  text-align: left;
+}
+
+.contents blockquote {
+  border-left: 4px solid var(--separator-color, #879ec2);
+  margin-left: 0;
+  padding-left: 1rem;
+}
+
+.contents code,
+.contents tt {
+  overflow-wrap: anywhere;
+}
