@@ -59,12 +59,15 @@ typedef vector<double>  femalecocoonmassvsagelogisticcurvedata;
 //------------------------------------------------------------------------------
 /**
  * \class OsmiaPollenNectarThresholds
- * \brief A pollen and nectar threshold pair, defining when a forage location is worth using.
+ * \brief Stores one monthly pollen and nectar threshold pair.
  *
  * <b>Implementation Approach:</b>
- * A small value type holding one threshold pair. Sets of these are supplied through
- * #cfg_OsmiaPollenThresholds and #cfg_OsmiaNectarThresholds so that thresholds can vary through the
- * season without changing code.
+ * A small value type populated from @c cfg_OsmiaPollenThresholds and @c cfg_OsmiaNectarThresholds during
+ * Osmia_Population_Manager::Init().
+ *
+ * \warning The resulting values are stored in Osmia_Population_Manager::m_PN_thresholds but are not
+ *          consulted by the supplied foraging implementation. They currently have no effect on
+ *          model behaviour.
  *
  * \see Osmia_Female, Osmia_Population_Manager
  */
@@ -94,15 +97,14 @@ public:
  *
  * <b>Limitations:</b>
  * - This mechanistic treatment extends beyond the Formal Model and is <b>disabled by default</b>
- *   (#cfg_UsingMechanisticParasitoids is false). The statistical treatment in Osmia_Female is used
+ *   (@c cfg_UsingMechanisticParasitoids is false). The statistical treatment in Osmia_Female is used
  *   instead.
- * - Nothing here is calibrated; parasitism belongs to a calibration stage that is outstanding
- *   (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) sections 4.3 and 7.5).
+ * - Nothing here is calibrated; calibration and evaluation of parasitism remain outstanding.
  *
  * \warning DailyMortality() indexes m_MortalityPerMonth with m_ThisMonth, which is initialised to
  *          -1 and never assigned: SetThisMonth() has no call site anywhere in the model. Enabling
  *          the mechanistic parasitoids therefore produces an out-of-bounds read on the first call.
- *          This path is unreachable while #cfg_UsingMechanisticParasitoids remains false.
+ *          This path is unreachable while @c cfg_UsingMechanisticParasitoids remains false.
  *
  * \see OsmiaParasitoid_Population_Manager, Osmia_Female
  * \par References:
@@ -137,10 +139,24 @@ protected:
 	static int m_ThisMonth;
 	// Methods
 public:
+	/**
+	 * @brief Creates one spatial parasitoid sub-population.
+	 * @param a_dispersalfraction Fraction entering dispersal per daily update.
+	 * @param a_startno Initial number of parasitoids.
+	 * @param a_x Cell x-index.
+	 * @param a_y Cell y-index.
+	 * @param a_wide Number of cells across the parasitoid grid.
+	 * @param a_high Number of cells down the parasitoid grid.
+	 * @param a_popman Owning parasitoid population manager.
+	 */
 	OsmiaParasitoidSubPopulation(double a_dispersalfraction, double a_startno, int a_x, int a_y, int a_wide, int a_high, OsmiaParasitoid_Population_Manager* a_popman);
+	/** @brief Destroys the aggregate sub-population. */
 	~OsmiaParasitoidSubPopulation();
+	/** @brief Adds parasitoids to this grid cell. */
 	void Add(double a_change) { m_NoParasitoids += a_change; }
+	/** @brief Removes parasitoids from this grid cell. */
 	void Remove(double a_change) { m_NoParasitoids -= a_change; }
+	/** @brief Returns the current aggregate abundance in this grid cell. */
 	double GetSubPopnSize() { return m_NoParasitoids; }
 	/** \brief Removes parasitoids killed by daily mortality */
 	void DailyMortality();
@@ -148,6 +164,7 @@ public:
 	void Dispersal();
 	/** \brief Carries out any reproduction possible */
 	void Reproduce();
+	/** @brief Runs mortality, dispersal and the currently empty reproduction step in that order. */
 	virtual void DoFirst() {
 		/** Removes parasitoids killed by daily mortality */
 		DailyMortality();
@@ -156,7 +173,9 @@ public:
 		/** Carries out any reproduction possible */
 		Reproduce();
 	}
+	/** @brief Sets the zero-based month index used by DailyMortality(). */
 	void SetThisMonth(int a_month) { m_ThisMonth = a_month;  }
+	/** @brief Replaces the twelve monthly daily-mortality values shared by all parasitoid cells. */
 	void SetMortalities(array<double, 12> a_morts) {
 		m_MortalityPerMonth = a_morts;
 	}
@@ -197,18 +216,29 @@ protected:
 	// Methods
 
 public:
+	/**
+	 * @brief Creates the spatial grids for all modelled parasitoid types.
+	 * @param a_landscape Landscape providing simulation dimensions.
+	 * @param a_cellsize Width and height of each square parasitoid grid cell, in metres.
+	 */
 	OsmiaParasitoid_Population_Manager(Landscape* a_landscape, int a_cellsize);
+	/** @brief Deletes all parasitoid sub-populations owned by the manager. */
 	~OsmiaParasitoid_Population_Manager();
+	/** @brief Adds dispersing parasitoids to a flattened type-and-cell index. */
 	void AddDispersers(int a_ref, double a_dispersers) {
 		m_SubPopulations[a_ref]->Add(a_dispersers);
 	}
+	/** @brief Removes dispersing parasitoids from a flattened type-and-cell index. */
 	void RemoveParasitoids(int a_ref, double a_dispersers) {
 		m_SubPopulations[a_ref]->Remove(a_dispersers);
 	}
+	/** @brief Returns abundance for a flattened type-and-cell index. */
 	double GetSize(int a_ref) { return m_SubPopulations[a_ref]->GetSubPopnSize(); }
+	/** @brief Returns abundance from the first parasitoid grid at a cell coordinate. */
 	double GetSize(int a_x, int a_y) { return m_SubPopulations[a_x+a_y*m_Wide]->GetSubPopnSize(); }
 	/** \brief returns an array with the parasitoid numbers in the cell at the location given by a_x, a_y */
 	array<double, static_cast<unsigned>(TTypeOfOsmiaParasitoids::topara_foobar)> GetParasitoidNumbers(int a_x, int a_y);
+	/** @brief Adds one individual of a parasitoid type to the cell containing a landscape coordinate. */
 	void AddParasitoid(TTypeOfOsmiaParasitoids a_type, int a_x, int a_y) 
 	{
 		int subpop = ((a_x / m_CellSize) + (a_y / m_CellSize) * m_Wide) + (static_cast<unsigned>(a_type)-1) * m_Size;
@@ -271,8 +301,9 @@ class struct_Osmia
  *
  * <b>Limitations:</b>
  * - Capacity is computed once and does not change with management or season.
- * - The absolute capacity depends on the density figures discussed in Osmia_Nest_Manager, which
- *   the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 6.6 finds are not empirically grounded in magnitude.
+ * - The absolute capacity depends on density figures whose magnitude is not empirically grounded.
+ * - The current implementation intentionally multiplies every input density by a hard-coded 0.001
+ *   operational scaling factor.
  *
  * \see Osmia_Nest_Manager, Osmia_Nest
  */
@@ -309,6 +340,7 @@ public:
 		m_Polyindex = -1;
 		m_Area = -1;
 	}
+	/** @brief Constructs an empty polygon entry with a known polygon index and area. */
 	OsmiaPolygonEntry(int a_index, int a_area)
 	{
 		m_CurrentOsmiaNests = 0;
@@ -414,7 +446,7 @@ public:
  *
  * <b>Implementation Approach:</b>
  * InitOsmiaBeeNesting() reads per-habitat densities from the file named by
- * #cfg_OsmiaNestByLE_Datafile and converts them to a capacity per polygon, held in OsmiaPolygonEntry.
+ * @c cfg_OsmiaNestByLE_Datafile and converts them to a capacity per polygon, held in OsmiaPolygonEntry.
  * Occupancy is claimed when a female settles and released when the nest is abandoned or the
  * offspring emerge. Access is guarded per nest by an OpenMP lock.
  *
@@ -423,14 +455,14 @@ public:
  * - Capacity is fixed for the run and does not respond to management or season.
  *
  * <b>Limitations:</b>
- * - the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 6.6 finds the nest-density parameterisation is calibrated rather than
- *   literature-derived, and is not empirically grounded in its absolute magnitude. Nest limitation
- *   should be read as a relative constraint, not an absolute one.
+ * - The nest-density parameterisation is calibrated rather than literature-derived and is not
+ *   empirically grounded in its absolute magnitude. Nest limitation should be read as a relative
+ *   constraint, not an absolute one.
  *
- * \warning InitOsmiaBeeNesting() applies a hard-coded x0.001 scaler to every density read from the
- *          input file, annotated in the source as a debug measure but applied unconditionally.
- *          Realised nest densities are therefore three orders of magnitude below the values supplied
- *          in the input file. Any interpretation of absolute nest numbers must account for this.
+ * \note InitOsmiaBeeNesting() applies a developer-confirmed x0.001 operational scaling factor to
+ *       every density read from the input file. Realised nest densities are therefore three orders
+ *       of magnitude below the unscaled values, which must be considered when interpreting absolute
+ *       nest numbers.
  *
  * \see OsmiaPolygonEntry, Osmia_Nest, OsmiaNestData
  * \par References:
@@ -510,15 +542,22 @@ public:
 	/** \brief Is a nest possible in this polytype */
 	bool GetNestPossible(TTypesOfLandscapeElement index) { return m_PossibleNestType[int(index)]; }
 
-	int GetNoNests(int a_polyindex) {
+		/** @brief Returns the current occupied-nest count for a polygon. */
+		int GetNoNests(int a_polyindex) {
 		return m_PolyList[a_polyindex].GetNoNests(); 
 	}
 
-	bool SanityCheck(int a_polyindex) {	 
+		/** @brief Tests whether the cached nest count equals the nest-list size for a polygon. */
+		bool SanityCheck(int a_polyindex) {
 		return m_PolyList[a_polyindex].SanityCheck();
 	}
 
-	bool CheckZeroNests() {
+		/**
+		 * @brief Runs the nest-cell diagnostic across every polygon entry.
+		 * @warning Osmia_Nest::ZeroCells() returns true for a non-empty nest, so the current diagnostic
+		 *          returns false when it encounters a normal occupied nest. Its return value is ignored.
+		 */
+		bool CheckZeroNests() {
 		for (unsigned int s = 0; s < m_PolyList.size(); s++) {
 			if (!m_PolyList[s].SanityCheck2()) return false;
 		}
@@ -552,8 +591,8 @@ protected:
  *   guarded by per-nest locks.
  *
  * <b>Limitations:</b>
- * - Population-level behaviour has not been calibrated or validated; the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 7.5 grades it
- *   speculative and states that no population-scale prediction should be treated as quantitative.
+ * - Population-level behaviour has not been calibrated or validated, so population-scale
+ *   predictions should not yet be treated as quantitative.
  *
  * \warning Stage counts are exposed to the framework's population reporting through m_ListNames in a
  *          fixed order, which must match the TTypeOfOsmiaLifeStages enumeration. Changing one
@@ -589,16 +628,24 @@ public:
 	void CreateObjects(TTypeOfOsmiaLifeStages ob_type, TAnimal* pvo, struct_Osmia* data, int number);
 
 	#ifdef __OSMIATESTING
-	/** \brief Add a new egg production to the stats record */
-	void RecordEggProduction(int a_eggs);
-	void RecordEggLength(int a_length);
-	void RecordLarvalLength(int a_length);
-	void RecordPrePupaLength(int a_length);
-	void RecordPupaLength(int a_length);
-	void RecordInCocoonLength(int a_length);
-	void RecordFemaleWeight(double a_mass) { m_FemaleWeights.push_back(a_mass); };
-	void SetFemaleWeightLock(void) {omp_set_nest_lock(m_female_weight_record_lock);}
-	void ReleaseFemaleWeightLock(void) {omp_unset_nest_lock(m_female_weight_record_lock);}
+		/** \brief Add a new egg production to the stats record */
+		void RecordEggProduction(int a_eggs);
+		/** @brief Records one completed egg-stage duration in days. */
+		void RecordEggLength(int a_length);
+		/** @brief Records one completed larval-stage duration in days. */
+		void RecordLarvalLength(int a_length);
+		/** @brief Records one completed prepupal-stage duration in days. */
+		void RecordPrePupaLength(int a_length);
+		/** @brief Records one completed pupal-stage duration in days. */
+		void RecordPupaLength(int a_length);
+		/** @brief Records one completed adult-in-cocoon-stage duration in days. */
+		void RecordInCocoonLength(int a_length);
+		/** @brief Adds one emerging female mass observation, in milligrams, to the testing record. */
+		void RecordFemaleWeight(double a_mass) { m_FemaleWeights.push_back(a_mass); };
+		/** @brief Acquires the lock protecting the female-mass testing record. */
+		void SetFemaleWeightLock(void) {omp_set_nest_lock(m_female_weight_record_lock);}
+		/** @brief Releases the lock protecting the female-mass testing record. */
+		void ReleaseFemaleWeightLock(void) {omp_unset_nest_lock(m_female_weight_record_lock);}
 	#endif
 	
 	/** \brief Returns flag to denore the end of prewintering, if ended it is set to true */
@@ -630,12 +677,18 @@ public:
 	double GetProvisioningParams(int a_age) {
 		return m_NestProvisioningParameters[a_age];
 	}
-	/** \brief Return the first cocoon mass for a nest give an age and female mass */
+	/** @brief Returns the first-cocoon provisioning mass for a maternal age and mass class.
+	 * @details The age lookup is generated through the configured adult lifespan, with a minimum
+	 * extent of 60 days.
+	 */
 	double GetFirstCocoonProvisioningMass(int a_age, int a_massclass)
 	{
 		return m_FemaleCocoonMassEqns[a_massclass][a_age]-(m_exp_ZeroTo1.Get() * m_FemaleCocoonMassEqns[a_massclass][a_age] * 0.6);
 	}
-	/** \brief Return the sex ratio for a nest give an age and female mass */
+	/** @brief Returns the planned female-egg proportion for a maternal age and mass class.
+	 * @details The age lookup is generated through the configured adult lifespan, with a minimum
+	 * extent of 60 days.
+	 */
 	double GetSexRatioEggsAgeMass(int a_massclass, int a_age)
 	{
 		return m_EggSexRatioEqns[a_massclass][a_age];
@@ -686,11 +739,12 @@ public:
 	/** \brief The function to write the population dynamics. */
 	void WritePopulationDynamics();
 	//DEBUG//
-#ifdef __OSMIATESTING
+	#ifdef __OSMIATESTING
 public:
 	ofstream m_eggsfirstnest;
 	double m_egghistogram[4][30];
-	void WriteNestTestData(OsmiaNestData a_target, OsmiaNestData a_achieved);
+		/** @brief Writes paired target and achieved first-nest testing records. */
+		void WriteNestTestData(OsmiaNestData a_target, OsmiaNestData a_achieved);
 #endif // __OSMIATESTING
 protected:
 	// Attributes
@@ -737,7 +791,7 @@ protected:
 	/** \brief An attribute used to scale the available pollen based on assumed competetion from other bee species */
 	double m_PollenCompetitionsReductionScaler;
 	/** \brief Coefficients of the prepupal development rate quadratic, cached for fast access.
-	* See the #cfg_OsmiaPrepupalRateA declaration for the functional form and its provenance. */
+	* See the @c cfg_OsmiaPrepupalRateA declaration for the functional form and its provenance. */
 	double m_PrePupalRateA;
 	double m_PrePupalRateB;
 	double m_PrePupalRateC;
@@ -746,7 +800,7 @@ protected:
 	double m_PrePupalRateQOpt;
 	/** \brief Holds the prepupal development rate for today for fast access */
 	double m_PrePupalDevelDaysToday;
-	/** \brief Holds a list of pollen and nectar thresholds, one for each month */
+	/** \brief Monthly pollen and nectar thresholds loaded at initialisation but not used by current behaviour. */
 	vector< OsmiaPollenNectarThresholds> m_PN_thresholds;
 
 	/** \brief The vector to store the daily dead population. */

@@ -81,7 +81,7 @@ CfgFloat cfg_OsmiaInCocoonEmergenceTempThreshold("OSMIA_INCOCOONEMERGENCETEMPTHR
 /** \brief Is the temperature developmental threshold for prewintering development (a temperature below which day degrees are not summed) */
 CfgFloat cfg_OsmiaInCocoonPrewinteringTempThreshold("OSMIA_INCOCOONPREWINTERINGTEMPTHRESHOLD", CFG_CUSTOM, 15.0);
 /** \brief Prepupal stage duration in days at the thermal optimum, scaling the rate function
-* declared at #cfg_OsmiaPrepupalRateA.
+* declared at @c cfg_OsmiaPrepupalRateA.
 *
 * Set to the calibrated value, matching OSMIA_PREPUPADEVELDAYS in Osmia_Calibrated.cfg. The
 * Formal Model value is 24.3 d (Ziolkowska et al. 2023, after Giejdasz et al. 2016).
@@ -118,7 +118,7 @@ CfgFloat cfg_OsmiaInCocoonWinterMortSlope("OSMIA_INCOCOONWINTERMORTSLOPE", CFG_C
 // Miscellaneous parameters
 /** \brief min possible male mass in mg */
 CfgFloat cfg_OsmiaMaleMassMin("OSMIA_MINMALEMASS", CFG_CUSTOM, 88);
-/** \brief min possible male mass in mg */
+/** \brief Maximum possible male mass in mg. */
 CfgFloat cfg_OsmiaMaleMassMax("OSMIA_MAXMALEMASS", CFG_CUSTOM, 105.0);
 /** \brief min possible female mass in mg */
 CfgFloat cfg_OsmiaFemaleMassMin("OSMIA_MINFEMALEMASS", CFG_CUSTOM, 25.0);
@@ -139,14 +139,20 @@ extern CfgBool cfg_OsmiaStorePopulationDynamics;
 extern CfgFloat l_pest_zero_threshold_animal;
 
 // Movement distributions
+/** @brief Median homing-distance scale in metres used to parameterise adult movement. */
 CfgInt cfg_OsmiaTypicalHomingDistance("OSMIA_TYPICALHOMINGDISTANCE", CFG_CUSTOM, 660); // 660 50% of bees cannot find their way home at this distance //this is static for now but can be related to female bee massclass
+/** @brief Upper homing-distance scale in metres used to scale dispersal draws. */
 CfgInt cfg_OsmiaMaxHomingDistance("OSMIA_MAXHOMINGDISTANCE", CFG_CUSTOM, 1430);  //  90% of bees cannot find their way home at this distance // EZ: change from 1430 to 715 generated negative numbers in pollen mask
 /** \brief Step size for the detailed forage mask. Step is each step out from the centre (min 1)*/
 CfgInt cfg_OsmiaDetailedMaskStep("OSMIA_DETAILEDMASKSTEP", CFG_CUSTOM, 1, 1, 100);
 // EZ: for now the distributions are the same but I'm leaving them separately if we would like to change that later
+/** @brief Distribution family used for adult dispersal distance. */
 static CfgStr cfg_OsmiaDispersalMovementProbType("OSMIA_DISPMOVPROBTYPE", CFG_CUSTOM, "BETA");
+/** @brief Arguments passed to the configured adult dispersal-distance distribution. */
 static CfgStr cfg_OsmiaDispersalMovementProbArgs("OSMIA_DISPMOVPROBARGS", CFG_CUSTOM, "10 5");  // Was 1 2.5 
+/** @brief Distribution family retained for general movement-distance draws. */
 static CfgStr cfg_OsmiaGeneralMovementProbType("OSMIA_GENMOVPROBTYPE", CFG_CUSTOM, "BETA");
+/** @brief Arguments passed to the retained general movement-distance distribution. */
 static CfgStr cfg_OsmiaGenerallMovementProbArgs("OSMIA_GENMOVPROBARGS", CFG_CUSTOM, "10 5");  // Was 1 2.5 
 /** \brief Distribution type for the planned eggs per nest probability distribution */
 static CfgStr cfg_OsmiaEggsPerNestProbType("OSMIA_EGGSPERNESTPROBYPE", CFG_CUSTOM, "BETA");
@@ -154,11 +160,17 @@ static CfgStr cfg_OsmiaEggsPerNestProbType("OSMIA_EGGSPERNESTPROBYPE", CFG_CUSTO
 static CfgStr cfg_OsmiaEggsPerNestProbArgs("OSMIA_EGGSPERNESTPROBARGS", CFG_CUSTOM, "2.277 5.940"); // Formal Model: "1.8 5.0"
 
 // Emergence distributions
+/** @brief Distribution family used for individual emergence-delay draws. */
 static CfgStr cfg_OsmiaEmergenceProbType("OSMIA_EMERGENCEPROBTYPE", CFG_CUSTOM, "DISCRETE");
+/** @brief Weights passed to the discrete emergence-delay distribution. */
 static CfgStr cfg_OsmiaEmergenceProbArgs("OSMIA_EMERGENCEPROBARGS", CFG_CUSTOM, "8 7 9 24 20 8 6 5 5 4 4"); // data from A.Bednarska
 
 // Foraging
+/** @brief Number of radial steps used only to construct the retained legacy forage mask. */
 CfgInt cfg_OsmiaForageSteps("OSMIA_FORAGESTEPS", CFG_CUSTOM, 20); // How many distance steps between nest and max forage distance
+/** @brief Radial spacing in metres used only to construct the retained legacy forage mask.
+ * @warning The mask is not consulted by the current square-window foraging search.
+ */
 static CfgInt cfg_OsmiaForageMaskStepSZ("OSMIA_FORAGEMASKSTEPSZ", CFG_CUSTOM, cfg_OsmiaTypicalHomingDistance.value() / (cfg_OsmiaForageSteps.value() - 1)); // Best set to cfg_OsmiaMaxHomingDistance /19 (effectively/20)
 /** \brief A cap (mg) on the amount of pollen possible to bring back - this is because pollen densities in the landscape can be very high */
 static CfgFloat cfg_OsmiaMaxPollen("OSMIA_MAXPOLLEN", CFG_CUSTOM, 2.5);
@@ -183,7 +195,7 @@ CfgBool cfg_OsmiaEggThresholdBasedPesticideResponse("OSMIA_EGG_THRESHOLD_BASED_P
 /** \brief The flag to use backgroud pesticide response for females. */
 CfgBool cfg_OsmiaFemaleBcackgroundPeticideResponse("OSMIA_FEMALE_BACKGROUND_PESTICIDE_RESPONSE", CFG_CUSTOM, true);
 
-static std::uniform_int_distribution<int> g_uni_0to15(0, 35);
+static std::uniform_int_distribution<int> g_uni_0to35(0, 35);
 extern thread_local std::mt19937 g_generator;
 extern CfgBool l_pest_enable_pesticide_engine;
 
@@ -559,7 +571,7 @@ TTypeOfOsmiaState Osmia_Prepupa::st_Develop(void)
 	* 1.0 per day on top of the temperature-dependent rate. Because the rate function is normalised
 	* to a maximum of 1.0, that flat term was of the same order as the entire temperature signal:
 	* it roughly halved the stage and cut the 10 C-to-22 C duration ratio from 3.28 to 1.53. It is
-	* removed so that #cfg_OsmiaPrepupaDevelTotalDays means what its name and the Formal Model say
+	* removed so that @c cfg_OsmiaPrepupaDevelTotalDays means what its name and the Formal Model say
 	* it means - the stage duration in days at the thermal optimum.
 	*
 	* The test remains a strict >, matching Osmia_Egg, Osmia_Larva and Osmia_Pupa, so the day on
@@ -747,9 +759,9 @@ TTypeOfOsmiaState Osmia_InCocoon::st_Develop(void)
 {
 	/**
 	* This is/must be called each day.
-	* If there has been a sudden drop in temperature and the mean temp is below 13 degrees then prewintering is assumed
-	* to end and wintering (hibernation) is assumed to start.
-	* This is recorded by the population manager in Osmia_Population_Manager::DoLast
+		* The population manager detects the end of pre-wintering from a sustained autumn temperature
+		* decline and records the result in a shared seasonal flag. This method then switches from
+		* pre-winter degree-day accumulation to the overwintering and spring-emergence calculations.
 	*/
 	m_Age++;
 	if (m_OurPopulationManager->IsEndPreWinter())
@@ -931,7 +943,10 @@ void Osmia_Female::Init(double a_mass)
 		g_msg->Warn(WARN_BUG, "Osmia_Female::Init(double a_mass)  - mass out of range: ", int(a_mass));
 		std::exit(TOP_Osmia); // Osmia exits return TOP_Osmia (10), in case anyone looks
 	}
-	m_BeeSizeScore2 = int(floor((m_Mass - m_FemaleMinMass) / cfg_OsmiaAdultMassCategoryStep.value() + 0.5)); // Creates cfg_OsmaiAdultMassCategoryStep sized bee classes
+	const double mass_class_step = cfg_OsmiaAdultMassCategoryStep.value();
+	m_BeeSizeScore2 = int(floor((m_Mass - m_FemaleMinMass) / mass_class_step + 0.5)); // Creates mass_class_step sized bee classes
+	const int maximum_mass_class = int(floor((m_FemaleMaxMass - m_FemaleMinMass) / mass_class_step));
+	if (m_BeeSizeScore2 > maximum_mass_class) m_BeeSizeScore2 = maximum_mass_class;
 	CalculateEggLoad(); //
 	// m_foraged_resource_pesticide is (re)pointed at the CURRENT thread's scratch at the start of each
 	// st_ReproductiveBehaviour() (a bee may Step on a different thread than it was constructed on), so no
@@ -1014,6 +1029,8 @@ bool Osmia_Female::OnFarmEvent( FarmToDo event ){
 		oversprayfile << g_date->GetYear() << '\t' << g_date->DayInYear() << '\t' << m_animal_id << endl;
 		break;
 	#endif
+		// With the pesticide engine disabled, product_treat has no biological effect.
+		break;
     case insecticide_treat:
     case trial_insecticidetreat:
     case trial_toxiccontrol:
@@ -1175,7 +1192,7 @@ TTypeOfOsmiaState Osmia_Female::st_Dispersal(void)
 	* This is a single random direction jump
 	*/
 	int movedist = int(m_OsmiaFemaleR90distance * m_dispersalmovementdistances.Get());
-	unsigned dir = m_Location_x & 7;
+	unsigned dir = g_random_fnc(8);
 	int x = m_Location_x + g_vector_x[dir] * movedist;
 	int y = m_Location_y + g_vector_y[dir] * movedist;
 	m_OurLandscape->CorrectCoords(x, y); // For wrap around
@@ -1191,8 +1208,9 @@ double Osmia_Female::Forage(void)
 {
 	/**
 	* The forage algorithm is very important in determining the efficiency of Osmia foraging and therefore the survival of the population in a patchy landscape.
-	* A forage mask is used to determine where to search, but because this will always yield the same result from the same starting point, a random offset is used each try.
-	* Using the Osmia_Female::m_ForageLoc attribute to signal if we have a good foraging location or not. 
+		* The current implementation scans one or more square windows around the nest by calling
+		* Landscape::SupplyLocMaxPollen; the pre-computed ring masks are not used.
+		* Osmia_Female::m_ForageLoc signals whether a usable foraging location has been retained.
 	* If we don't have a good place to forage then look around, otherwise use the one we have have until it is depleted or we start a new nest. Depletion is 
 	* determined by Osmia_Female::m_pollengiveupreturn, which is set at a proportion (e.g. 75%) of the starting value when found.
 	* We have a minimum acceptance level set by pollenfound2, initially set to 1.0. 
@@ -1317,7 +1335,10 @@ TTypeOfOsmiaState Osmia_Female::st_ReproductiveBehaviour(void)
 		* no_female = int(round(no_eggs_in_nest * sex_ratio))
 		*/
 		int no_female_eggs = int(floor(m_EggsThisNest * m_OurPopulationManager->GetSexRatioEggsAgeMass(m_BeeSizeScore2, m_EmergeAge) + 0.5));
-		double female_step_prov_mass_loss = (m_TotalProvisioningMassLoss + (g_rand_uni_fnc() * m_TotalProvisioningMassLossRangeX2) - m_TotalProvisioningMassLossRange) / no_female_eggs;
+		double female_step_prov_mass_loss = 0.0;
+		if (no_female_eggs > 0) {
+			female_step_prov_mass_loss = (m_TotalProvisioningMassLoss + (g_rand_uni_fnc() * m_TotalProvisioningMassLossRangeX2) - m_TotalProvisioningMassLossRange) / no_female_eggs;
+		}
 		/**
 		* For each egg we need to assign and record the target provisioning mass.
 		* Each female egg is reduced in mass by female_step_mass_loss after the first_female_cocoon_mass
@@ -1474,7 +1495,7 @@ TTypeOfOsmiaState Osmia_Female::st_ReproductiveBehaviour(void)
 	//if(temp_pollen_foraged_total>0) cout<<"temp_pollen_foraged: "<<temp_pollen_foraged<<endl;
 	m_CurrentProvisioning += temp_pollen_foraged_total; // We have total possible pollen because we do not deplete it (so its OK to 'waste' it).
 	m_CellCarryOver += m_foragehours;
-	while (((m_CurrentProvisioning) > m_NestProvisioningPlan[0]) && (m_NestProvisioningPlan.size()>0) && (m_CellCarryOver >= 4.3))
+	while ((m_NestProvisioningPlan.size() > 0) && ((m_CurrentProvisioning) > m_NestProvisioningPlan[0]) && (m_CellCarryOver >= 4.3))
 	{
 		// Make the egg and link the object to the nest
 		LayEgg(); // will remove pollen from m_CurrentProvisioning
@@ -1750,7 +1771,7 @@ Osmia_Nest::Osmia_Nest(int a_x, int a_y, int a_polyref, Osmia_Nest_Manager* a_ma
 	m_OurManager = a_manager;
 	m_isOpen = true;
 	m_owner = nullptr;
-	m_aspectdelay = g_uni_0to15(g_generator);
+	m_aspectdelay = g_uni_0to35(g_generator);
 	m_cell_lock = new omp_nest_lock_t;
 	omp_init_nest_lock(m_cell_lock);
 }

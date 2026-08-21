@@ -96,8 +96,8 @@ enum class TTypeOfOsmiaParasitoids : unsigned // unsigned is used because this m
  * \brief A pre-computed ring-and-bearing offset mask for foraging search.
  *
  * <b>Implementation Approach:</b>
- * Holds APoint offsets on a set of bearings at increasing radii, sized by #cfg_OsmiaForageSteps and
- * #cfg_OsmiaForageMaskStepSZ, so that a search can walk outward from the nest without recomputing
+ * Holds APoint offsets on a set of bearings at increasing radii, sized by @c cfg_OsmiaForageSteps and
+ * @c cfg_OsmiaForageMaskStepSZ, so that a search can walk outward from the nest without recomputing
  * geometry.
  *
  * \warning This mask is constructed at initialisation and <b>never read</b>. Foraging is instead
@@ -118,6 +118,7 @@ public:
 	int m_mask[20][8][2];
 	int m_step;
 	int m_step2;
+	/** @brief Constructs the currently unused 20-ring, eight-direction search mask. */
 	OsmiaForageMask();
 };
 
@@ -127,7 +128,7 @@ public:
  *
  * <b>Implementation Approach:</b>
  * A single flat vector of APoint offsets built ring by ring from radius zero outward, sized by
- * #cfg_OsmiaDetailedMaskStep and #cfg_OsmiaTypicalHomingDistance.
+ * @c cfg_OsmiaDetailedMaskStep and @c cfg_OsmiaTypicalHomingDistance.
  *
  * \warning As with OsmiaForageMask, this mask is built at initialisation and never read; the
  *          configuration variables that size it have no effect on behaviour. Retained for a future
@@ -146,16 +147,21 @@ public:
 	vector<APoint> m_mask;
 	int m_step;
 	int m_maxdistance;
+	/**
+	 * @brief Constructs the currently unused detailed search mask.
+	 * @param a_step Radial interval between successive rings, in metres.
+	 * @param a_maxdistance Maximum radius represented by the mask, in metres.
+	 */
 	OsmiaForageMaskDetailed(int a_step, int a_maxdistance);
 };
 
 /**
  * \class OsmiaNestData
- * \brief Holds the per-habitat nest density figures read from the nest-site input file.
+ * \brief Testing-only record of egg number, female number and cell provision masses for one nest.
  *
- * <b>Biological Basis:</b>
- * Cavity availability limits solitary-bee populations, and differs systematically between landscape
- * element types. The input file supplies a minimum and maximum nest density for each type.
+ * <b>Implementation Approach:</b>
+ * Instances are compiled only into the testing pathway in Osmia_Female and are written by
+ * Osmia_Population_Manager::WriteNestTestData(). They do not control nesting behaviour.
  *
  * \see Osmia_Nest_Manager, OsmiaPolygonEntry
  */
@@ -231,7 +237,15 @@ public:
 	std::list<Osmia_Nest*>::iterator m_nest_handle;
 	/** \brief True once m_nest_handle has been set (guards against erasing with an unset handle). */
 	bool m_nest_handle_set = false;
+	/**
+	 * @brief Creates an empty, open nest at a landscape location.
+	 * @param a_x Landscape x-coordinate in metres.
+	 * @param a_y Landscape y-coordinate in metres.
+	 * @param a_polyref Polygon index used by the nest manager.
+	 * @param a_manager Manager that owns and ultimately releases the nest.
+	 */
 	Osmia_Nest(int a_x, int a_y, int a_polyref, Osmia_Nest_Manager* a_manager);
+	/** @brief Destroys the per-nest OpenMP lock; brood objects are owned by the population manager. */
 	virtual ~Osmia_Nest(){
 		omp_destroy_nest_lock(m_cell_lock);
 		delete m_cell_lock;
@@ -246,9 +260,19 @@ public:
 	}
 	/** \brief Adds an egg to the nest */
 	void AddEgg(TAnimal* a_egg) { m_cells.push_front(a_egg); }
+	/**
+	 * @brief Replaces a brood-stage pointer without changing its position in the linear nest.
+	 * @param a_oldpointer Pointer to the life-stage object being replaced.
+	 * @param a_newpointer Pointer to the successor life-stage object.
+	 */
 	void ReplaceNestPointer(TAnimal* a_oldpointer, TAnimal* a_newpointer) {
 		std::replace(m_cells.begin(), m_cells.end(), a_oldpointer, a_newpointer); // replaces the old life stage pointer with the new one in-place
 	}
+	/**
+	 * @brief Removes a brood object from the nest and releases the nest if it becomes empty.
+	 * @param a_oldpointer Pointer to the brood object to remove.
+	 * @note The method acquires and releases the nest cell lock internally.
+	 */
 	void RemoveCell(TAnimal* a_oldpointer);
 	/** \brief Debug function - Is this osmia present? */
 	bool Find(TAnimal* a_osmia)
@@ -266,10 +290,15 @@ public:
 	int GetNoNests();
 	/** \brief Get the number of cells for this nest */
 	int GetNoCells() { return std::distance(std::begin(m_cells), std::end(m_cells)); };
-	/** \brief Debug - to check if any nests have zero cells */
+	/**
+	 * @brief Returns true when the nest contains at least one cell.
+	 * @warning The method name suggests the opposite result. It is used only by the diagnostic
+	 *          Osmia_Nest_Manager::CheckZeroNests().
+	 */
 	bool ZeroCells() {
 		if (std::distance(std::begin(m_cells), std::end(m_cells)) < 1) return false; else return true;
 	}
+	/** @brief Returns the nest-specific emergence delay, in days. */
 	int GetAspectDelay() { return m_aspectdelay; }
 	/** \brief Tells us whether the nest is finished for additions = false or can be added too = true */
 	bool GetIsOpen() { return m_isOpen; }
@@ -472,6 +501,7 @@ protected:
 
 public:
 	/** \brief Returns the configured max female lifespan (OSMIA_LIFESPAN) */
+	/** @brief Returns the configured maximum adult female lifespan in days. */
 	static int GetFemaleLifespan() { return m_OsmiaFemaleLifespan; }
 	/** \brief Osmia constructor */
 	Osmia_Base(struct_Osmia* data);
@@ -501,6 +531,7 @@ public:
 	}
 	/** \brief Set the parasitised status */
 	TTypeOfOsmiaParasitoids GetParasitised( void ) { return m_ParasitoidStatus; }
+	/** @brief Returns the nest associated with this life stage, or nullptr for a female without a current nest. */
 	Osmia_Nest* GetNest() { return m_OurNest; }
 	/** \brief Used to populate the static members holding mortality and development parameters */
 	static void SetParameterValues();
@@ -532,22 +563,20 @@ public:
  * rearing at controlled temperatures underpins the stage durations.
  *
  * <b>Implementation Approach:</b>
- * st_Develop() adds max(0, T - #cfg_OsmiaEggDevelThreshold) to m_AgeDegrees each day and signals the
- * transition once #cfg_OsmiaEggDevelTotalDD is reached. DailyMortality() applies a constant daily
+ * st_Develop() adds max(0, T - @c cfg_OsmiaEggDevelThreshold) to m_AgeDegrees each day and signals the
+ * transition once @c cfg_OsmiaEggDevelTotalDD is reached. DailyMortality() applies a constant daily
  * probability, independent of temperature.
  *
  * <b>Key Assumptions:</b>
- * - Development rate is linear above the threshold and zero below it. the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 6.1
- *   sets out the case for a non-linear response and why it was not adopted.
+ * - Development rate is linear above the threshold and zero below it; a non-linear response was not
+ *   adopted in the current implementation.
  * - Mortality is constant across the stage, and independent of temperature and condition.
  *
  * <b>Limitations:</b>
  * - The threshold and the degree-day sum are <b>calibrated, not measured</b>, and are jointly
- *   identifiable rather than separately determined: a lower threshold paired with a larger sum fits
- *   the same data as a higher threshold with a smaller one (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 7.1). The pair must be
- *   changed together, and neither value should be quoted on its own.
- * - The calibrated pair departs substantially from the Formal Model's a priori values, because the
- *   a priori set does not sustain the population (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) sections 4.6-4.7).
+ *   identifiable rather than separately determined. The pair must be changed together, and neither
+ *   value should be interpreted on its own.
+ * - The calibrated pair departs substantially from the Formal Model's a priori values.
  *
  * \see Osmia_Base, Osmia_Larva
  * \par References:
@@ -572,7 +601,7 @@ protected:
 	/** \brief Holds the mortality caused by pesticide*/
 	double m_egg_pest_mortality;
 public:
-	/** \brief Osmia_Egg constructor */
+	/** @brief Constructs an egg and initialises its sex, nest, mass and pesticide mortality state. */
 	Osmia_Egg(struct_Osmia* data);
 	/** \brief Osmia_Egg ReInit for object pool */
 	virtual void ReInit(struct_Osmia* data);
@@ -587,7 +616,7 @@ public:
 	/** \brief A typical interface function - this one sets the agedegrees */
 	void SetAgeDegrees(unsigned a_agedegrees) { m_AgeDegrees = a_agedegrees; }
 protected:
-	/** \brief Behavioural state development */
+	/** @brief Applies daily egg mortality and degree-day development. */
 	virtual TTypeOfOsmiaState st_Develop(void);
 	/** \brief Behavioural state hatch */
 	virtual TTypeOfOsmiaState st_Hatch(void);
@@ -604,22 +633,20 @@ protected:
  * end of the stage. Development is temperature-driven, as for the egg.
  *
  * <b>Implementation Approach:</b>
- * Identical in form to Osmia_Egg - degree-day accumulation above #cfg_OsmiaLarvaDevelThreshold
- * toward #cfg_OsmiaLarvaDevelTotalDD - with st_Prepupate() signalling the transition. Derives from
+ * Identical in form to Osmia_Egg - degree-day accumulation above @c cfg_OsmiaLarvaDevelThreshold
+ * toward @c cfg_OsmiaLarvaDevelTotalDD - with st_Prepupate() signalling the transition. Derives from
  * Osmia_Egg rather than from Osmia_Base: see the note on the inheritance chain in Osmia_Base.
  *
  * <b>Key Assumptions:</b>
- * - Development rate is linear above the threshold and zero below it. the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 6.1
- *   sets out the case for a non-linear response and why it was not adopted.
+ * - Development rate is linear above the threshold and zero below it; a non-linear response was not
+ *   adopted in the current implementation.
  * - Mortality is constant across the stage, and independent of temperature and condition.
  *
  * <b>Limitations:</b>
  * - The threshold and the degree-day sum are <b>calibrated, not measured</b>, and are jointly
- *   identifiable rather than separately determined: a lower threshold paired with a larger sum fits
- *   the same data as a higher threshold with a smaller one (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 7.1). The pair must be
- *   changed together, and neither value should be quoted on its own.
- * - The calibrated pair departs substantially from the Formal Model's a priori values, because the
- *   a priori set does not sustain the population (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) sections 4.6-4.7).
+ *   identifiable rather than separately determined. The pair must be changed together, and neither
+ *   value should be interpreted on its own.
+ * - The calibrated pair departs substantially from the Formal Model's a priori values.
  *
  * \note The provision mass a larva received is not re-read here. It has already been converted to
  *       the eventual adult mass at cell closure, so larval growth is not modelled explicitly.
@@ -639,17 +666,18 @@ class Osmia_Larva : public Osmia_Egg
 {
 protected:
 public:
-	/** \brief Osmia_Larva constructor */
+	/** @brief Constructs a larva from the state transferred by an egg. */
 	Osmia_Larva(struct_Osmia* data);
 	/** \brief Osmia_Larva ReInit for object pool */
 	virtual void ReInit(struct_Osmia* data);
+	/** @brief Destroys the larval stage object. */
 	virtual ~Osmia_Larva();
 	/** \brief The Step is the second 'part' of the timestep that an animal can behave in. It is called continuously until all animals report that they are 'DONE'. */
 	virtual void Step(void);
 	/** \brief The BeginStep is the first 'part' of the timestep that an animal can behave in. It is called once per timestep. */
 	virtual void BeginStep(void) { ; } // NB this is not used
 protected:
-	/** \brief Behavioural state development */
+	/** @brief Applies daily larval mortality and degree-day development. */
 	virtual TTypeOfOsmiaState st_Develop(void);
 	/** \brief Behavioural state pupate */
 	virtual TTypeOfOsmiaState st_Prepupate(void);
@@ -668,15 +696,14 @@ protected:
  * at both higher and lower temperatures.
  *
  * <b>Implementation Approach:</b>
- * A quadratic rate function q(T), defined by #cfg_OsmiaPrepupalRateA, #cfg_OsmiaPrepupalRateB and
- * #cfg_OsmiaPrepupalRateC and normalised to 1.0 at #cfg_OsmiaPrepupalRateTOpt, scales the base
- * duration #cfg_OsmiaPrepupaDevelTotalDays. Stage duration is therefore
+ * A quadratic rate function q(T), defined by @c cfg_OsmiaPrepupalRateA, @c cfg_OsmiaPrepupalRateB and
+ * @c cfg_OsmiaPrepupalRateC and normalised to 1.0 at @c cfg_OsmiaPrepupalRateTOpt, scales the base
+ * duration @c cfg_OsmiaPrepupaDevelTotalDays. Stage duration is therefore
  * OSMIA_PREPUPADEVELDAYS * q(Topt)/q(T).
  *
  * <b>Key Assumptions:</b>
  * - The thermal response is symmetric about the optimum, as a quadratic implies.
- * - Individual variation is +/-10%, assumed by the Formal Model with no data to fit against
- *   (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 4.3).
+ * - Individual variation is +/-10%, assumed by the Formal Model without data for fitting.
  *
  * <b>Limitations:</b>
  * - Only the scale is calibrated; the three shape coefficients and the optimum are fixed by the
@@ -687,9 +714,8 @@ protected:
  *          the temperature-dependent rate, roughly halving the stage's thermal sensitivity: the
  *          10 C to 22 C duration ratio was 1.53 as implemented against 3.28 as specified. The term
  *          has been removed and the rate function is now evaluated continuously rather than from a
- *          42-entry lookup table. #cfg_OsmiaPrepupaDevelTotalDays had been set to 45 in the presence
- *          of the flat term and must not be restored to that value without it
- *          (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 3.3).
+ *          42-entry lookup table. @c cfg_OsmiaPrepupaDevelTotalDays had been set to 45 in the presence
+ *          of the flat term and must not be restored to that value without it.
  *
  * \see Osmia_Larva, Osmia_Pupa
  * \par References:
@@ -706,17 +732,18 @@ protected:
 class Osmia_Prepupa : public Osmia_Larva
 {
 public:
-	/** \brief Osmia_Prepupa constructor */
+	/** @brief Constructs a prepupa and draws its individual development target within ±10% of the configured mean. */
 	Osmia_Prepupa(struct_Osmia* data);
 	/** \brief Osmia_Prepupa ReInit for object pool */
 	virtual void ReInit(struct_Osmia* data);
+	/** @brief Destroys the prepupal stage object. */
 	virtual ~Osmia_Prepupa();
 	/** \brief The Step is the second 'part' of the timestep that an animal can behave in. It is called continuously until all animals report that they are 'DONE'. */
 	virtual void Step(void);
 	/** \brief The BeginStep is the first 'part' of the timestep that an animal can behave in. It is called once per timestep. */
 	virtual void BeginStep(void) { ; } // NB this is not used
 protected:
-	/** \brief Behavioural state development */
+	/** @brief Applies daily prepupal mortality and accumulates the temperature-dependent development rate. */
 	virtual TTypeOfOsmiaState st_Develop(void);
 	/** \brief Behavioural state for emerging from the pupa */
 	virtual TTypeOfOsmiaState st_Pupate(void);
@@ -735,21 +762,19 @@ protected:
  * over winter. As for the egg and larva, the rate is temperature-dependent.
  *
  * <b>Implementation Approach:</b>
- * Degree-day accumulation above #cfg_OsmiaPupaDevelThreshold toward #cfg_OsmiaPupaDevelTotalDD,
+ * Degree-day accumulation above @c cfg_OsmiaPupaDevelThreshold toward @c cfg_OsmiaPupaDevelTotalDD,
  * with st_Emerge() creating the Osmia_InCocoon that follows.
  *
  * <b>Key Assumptions:</b>
- * - Development rate is linear above the threshold and zero below it. the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 6.1
- *   sets out the case for a non-linear response and why it was not adopted.
+ * - Development rate is linear above the threshold and zero below it; a non-linear response was not
+ *   adopted in the current implementation.
  * - Mortality is constant across the stage, and independent of temperature and condition.
  *
  * <b>Limitations:</b>
  * - The threshold and the degree-day sum are <b>calibrated, not measured</b>, and are jointly
- *   identifiable rather than separately determined: a lower threshold paired with a larger sum fits
- *   the same data as a higher threshold with a smaller one (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 7.1). The pair must be
- *   changed together, and neither value should be quoted on its own.
- * - The calibrated pair departs substantially from the Formal Model's a priori values, because the
- *   a priori set does not sustain the population (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) sections 4.6-4.7).
+ *   identifiable rather than separately determined. The pair must be changed together, and neither
+ *   value should be interpreted on its own.
+ * - The calibrated pair departs substantially from the Formal Model's a priori values.
  *
  * \see Osmia_Prepupa, Osmia_InCocoon
  * \par References:
@@ -763,17 +788,18 @@ protected:
 class Osmia_Pupa : public Osmia_Prepupa
 {
 public:
-	/** \brief Osmia_Pupa constructor */
+	/** @brief Constructs a pupa from the state transferred by a prepupa. */
 	Osmia_Pupa(struct_Osmia* data);
 	/** \brief Osmia_Pupa ReInit for object pool */
 	virtual void ReInit(struct_Osmia* data);
+	/** @brief Destroys the pupal stage object. */
 	virtual ~Osmia_Pupa();
 	/** \brief The Step is the second 'part' of the timestep that an animal can behave in. It is called continuously until all animals report that they are 'DONE'. */
 	virtual void Step(void);
 	/** \brief The BeginStep is the first 'part' of the timestep that an animal can behave in. It is called once per timestep. */
 	virtual void BeginStep(void) { ; } // NB this is not used
 protected:
-	/** \brief Behavioural state development */
+	/** @brief Applies daily pupal mortality and degree-day development. */
 	virtual TTypeOfOsmiaState st_Develop(void);
 	/** \brief Behavioural state for emerging from the pupa */
 	virtual TTypeOfOsmiaState st_Emerge(void);
@@ -794,24 +820,22 @@ protected:
  * emergence and plant flowering do not respond to warming at the same rate.
  *
  * <b>Implementation Approach:</b>
- * The stage proceeds in phases: pre-wintering, overwintering degree-day accumulation below
- * #cfg_OsmiaInCocoonOverwinteringTempThreshold, spring pre-emergence, and emergence. The emergence
+ * The stage proceeds in phases: pre-wintering, overwintering degree-day accumulation above
+ * @c cfg_OsmiaInCocoonOverwinteringTempThreshold, spring pre-emergence, and emergence. The emergence
  * counter is a linear function of accumulated overwintering degree-days
- * (#cfg_OsmiaInCocoonEmergCountConst, #cfg_OsmiaInCocoonEmergCountSlope) plus an individual draw
- * from #cfg_OsmiaEmergenceProbArgs. WinterMortality() applies an overwinter survival function.
+ * (@c cfg_OsmiaInCocoonEmergCountConst, @c cfg_OsmiaInCocoonEmergCountSlope) plus an individual draw
+ * from @c cfg_OsmiaEmergenceProbArgs. WinterMortality() applies an overwinter survival function.
  *
  * <b>Key Assumptions:</b>
  * - Overwintering is driven by accumulated temperature alone; humidity, desiccation and reserve
  *   depletion are not represented.
- * - The emergence kernel is an empirical distribution held fixed, not fitted
- *   (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 4.3).
+ * - The emergence kernel is an empirical distribution held fixed rather than fitted.
  *
  * <b>Limitations:</b>
- * - All four overwintering and emergence parameters are <b>fitted</b>, and are not separable from
- *   the in-nest stages (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 4.3).
+ * - All four overwintering and emergence parameters are <b>fitted</b> and are not separable from
+ *   the in-nest stages.
  * - The emergence counter is degenerate: fitting emergence onset alone admits multiple equally good
- *   solutions, so the constant and the slope are not individually identified
- *   (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) sections 4.9 and 7.2).
+ *   solutions, so the constant and the slope are not individually identified.
  *
  * \note WinterMortality()'s constant and slope operate on a percentage scale, which their names do
  *       not indicate.
@@ -834,13 +858,14 @@ protected:
 	/** \brief Counter for the number of days remaining until emergence from the nest */
 	int m_emergencecounter;
 
-	/** \brief An attribute to record the number of day degrees calculated for the prewintering period (from start of Osmia_InCocoon stage till the m_PreWinteringEndFlag is set to true) */
+	/** \brief Degree-days accumulated above the configured pre-winter threshold before m_PreWinteringEndFlag is set. */
 	double m_DDPrewinter;
 public:
-	/** \brief Osmia_Adult constructor */
+	/** @brief Constructs an adult-in-cocoon and initialises its overwintering accumulators. */
 	Osmia_InCocoon(struct_Osmia* data);
 	/** \brief Osmia_Adult ReInit for object pool */
 	virtual void ReInit(struct_Osmia* data);
+	/** @brief Destroys the adult-in-cocoon stage object. */
 	virtual ~Osmia_InCocoon();
 	/** \brief The Step is the second 'part' of the timestep that an animal can behave in. It is called continuously until all animals report that they are 'DONE'. */
 	virtual void Step(void);
@@ -848,10 +873,10 @@ public:
 	virtual void BeginStep(void) { ; } // NB this is not used
 	/** \brief Set method for m_OverwinteringTempThreshold */
 	static void SetOverwinteringTempThreshold(double a_temp) { m_OverwinteringTempThreshold = a_temp; }
-	/** \brief Returns the number of day degrees during prewinter above 15.0 degrees */
+	/** \brief Returns pre-winter degree-days accumulated above the configured threshold. */
 	double GetDDPreWinter() { return m_DDPrewinter; }
 protected:
-	/** \brief Behavioural state development */
+	/** @brief Advances pre-wintering, overwintering and spring emergence timing. */
 	virtual TTypeOfOsmiaState st_Develop(void);
 	/** \brief Behavioural state for emerging from the InCocoon */
 	virtual TTypeOfOsmiaState st_Emerge(void);
@@ -889,23 +914,28 @@ protected:
  * - No learning, and no interaction between females except through shared resources and nest sites.
  *
  * <b>Limitations:</b>
- * - Foraging, movement, mortality and parasitism are <b>not calibrated</b>; they belong to stages of
- *   the calibration that remain outstanding, and results depending on them are graded speculative
- *   (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) sections 4.3 and 7.5).
+ * - Foraging, movement, mortality and parasitism are <b>not calibrated</b>; evaluation of those
+ *   processes remains outstanding.
  *
  * \warning PlanEggsPerNest() contains <tt>if (g_rand_uni_fnc() > 0.55) shift = 2;</tt>, adding two
  *          eggs to 45% of nests. This has no counterpart in the Formal Model and no stated empirical
  *          basis. Its effect is currently absorbed into the fitted BETA shape rather than separately
- *          identified (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 3.3).
+ *          identified.
  * \warning PlanEggsPerNest() is called once per <b>female</b>, not once per nest. All between-nest
  *          variation within a female's lifetime therefore derives from a single draw made at
- *          emergence, modified only by the deterministic -2 ramp. Whether this is intended is
- *          unresolved (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 3.3).
+ *          emergence, modified only by the deterministic -2 ramp. Whether this is intended remains
+ *          unresolved.
  * \warning Init() terminates the program with <tt>std::exit()</tt> if a female's mass falls outside
- *          [#cfg_OsmiaFemaleMassMin, #cfg_OsmiaFemaleMassMax]. This is presently unreachable, because
+ *          [@c cfg_OsmiaFemaleMassMin, @c cfg_OsmiaFemaleMassMax]. This is presently unreachable, because
  *          the provisioning target and the founding cohort both derive their bounds from the same
  *          configured mass mapping that the check uses. Any change that decouples them reinstates a
- *          hard termination rather than a degradation (the testing and calibration paper (<tt>doc/Osmia_TestingCalibration.md</tt>) section 3.5).
+ *          hard termination rather than a degradation.
+ * \note Init() clamps the calculated maternal mass-class index to the final lookup-table class, so
+ *       the permitted 200 mg upper bound uses the 195 mg class rather than indexing beyond the table.
+ * \note An all-male nest uses the male minimum provision target for every planned egg; no female
+ *       provision-mass decline is calculated when the planned number of female eggs is zero.
+ * \note st_ReproductiveBehaviour() tests that the provision plan is non-empty before reading its
+ *       first element.
  *
  * \see Osmia_InCocoon, Osmia_Nest, Osmia_Nest_Manager
  * \par References:
@@ -1012,7 +1042,7 @@ public:
 	/** \brief Overspray chance */
 	static double m_OsmiaPPPOversprayChance;
 protected:
-	/** \brief Get body PPP threshold */
+	/** @brief Returns the adult internal pesticide-burden mortality threshold. */
 	static double GetPPPThreshold() { return m_OsmiaPPPThreshold; }
 	/** \brief Get body PPP death chance */
 	static double GetPPPEffectProb() { return m_OsmiaPPPEffectProb; }
@@ -1034,6 +1064,7 @@ protected:
 
 
 	//Methods
+	/** @brief Closes and, when empty, releases the current nest before removing the female. */
 	virtual void st_Dying(void);
 	//--------------------------------------------------------------------------------------------------------------------------------
 	/** \brief Behavioural state development */
@@ -1065,7 +1096,7 @@ protected:
 	void LayEgg();
 
 public:
-	/** \brief Osmia_Female constructor */
+	/** @brief Constructs an adult female and initialises its reproductive and foraging state. */
 	Osmia_Female(struct_Osmia* data);
 	/** \brief Osmia_Female ReInit for object pool */
 	virtual void ReInit(struct_Osmia* data);
@@ -1077,6 +1108,7 @@ public:
 	virtual void BeginStep(void);
 	/** \brief The Step is the second 'part' of the timestep that an animal can behave in. It is called continuously until all animals report that they are 'DONE'. */
 	virtual void Step(void);
+	/** @brief Stores the configured ring count for the unused legacy forage mask. */
 	static void SetForageSteps(int a_sz) { m_ForageSteps = a_sz; }
 	/** \brief Initialise the detailed forage mask */
 	static void SetForageMaskDetailed(int a_step, int a_max) {
@@ -1089,6 +1121,7 @@ public:
 	static void SetPollenGiveUpReturn(double a_value) { m_pollengiveupreturn = a_value; }
 	/** \brief Cache the max-pollen-per-hour and sugar-per-day cfg constants (called once at setup). */
 	static void SetMaxPollen(double a_value) { m_OsmiaMaxPollen = a_value; }
+	/** @brief Caches the adult daily nectar requirement in the units expected by the landscape nectar layer. */
 	static void SetSugarPerDay(double a_value) { m_OsmiaSugarPerDay = a_value; }
 	/** \brief Record the daily mortality parameter values */
 	static void  SetDailyMort(double a_prob) { m_OsmiaFemaleBckMort = a_prob; }
@@ -1127,13 +1160,26 @@ public:
 	static void SetParasitismProbToTimeCellOpen(double a_ratio) { m_ParasitismProbToTimeCellOpen = a_ratio; }
 	/** \brief Sets the UsingMechanisticParasitoids flag */
 	static void SetUsingMechanisticParasitoids(bool a_flag) { m_UsingMechanisticParasitoids = a_flag; }
+	/** @brief Stores the per-capita attack coefficients for the optional mechanistic parasitoid path. */
 	static void SetParasitoidParameters(vector<double> a_params) { m_ParasitoidAttackChance = a_params; }
 	/** \brief sets the m_DensityDependentPollenRemovalConst value */
 	void SetDensityDependentPollenRemovalConst(double a_value) { m_DensityDependentPollenRemovalConst = a_value; }
 	/** \brief Save a forage efficiency value */
 	static void AddForageEfficiency(double a_eff) { m_FemaleForageEfficiency.push_back(a_eff); }
-	/** \brief Gets pollen in a polygon from a starting location. */
+	/**
+	 * @brief Legacy, inactive pollen-removal helper.
+	 * @warning The only call site is commented out. The current body assigns the requested amount to
+	 *          the output without removing pollen from the landscape.
+	 */
 	void GetPollenInPolygon(double& a_required_amount, double& a_foraged_amount, int a_polygon, int a_loc_x, int a_loc_y);
+	/**
+	 * @brief Responds to pesticide-related farm events affecting the female's current location.
+	 * @param event Management event supplied by the ALMaSS landscape.
+	 * @return true when the event was handled as an Osmia pesticide exposure or caused mortality.
+	 * @details A `product_treat` event invokes overspray only when the pesticide engine is enabled;
+	 * otherwise it has no biological effect. The legacy insecticide and biocide events can apply the
+	 * configured background mortality response independently of that engine.
+	 */
 	virtual bool OnFarmEvent( FarmToDo event );
 	/** \brief Override the pesticide contact function.*/
 	virtual void DoPesticideContact(int a_x = -1, int a_y = -1);

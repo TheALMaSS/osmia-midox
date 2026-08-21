@@ -70,7 +70,7 @@ static CfgArray_Double cfg_OsmiaParasDailyMort("OSMIA_PARAS_DAILYMORT", CFG_CUST
 *
 * The Formal Model (Ziolkowska et al. 2023, FMJ 4: e102102, p.12) specifies prepupal duration
 * as a quadratic in temperature with an optimum at 22 C, at which the maximal developmental
-* speed of #cfg_OsmiaPrepupaDevelTotalDays is reached:
+* speed of @c cfg_OsmiaPrepupaDevelTotalDays is reached:
 *
 *     duration(T) = OSMIA_PREPUPADEVELDAYS * q(T) / q(Topt)
 *     q(T)        = a*T^2 + b*T + c
@@ -92,7 +92,9 @@ static CfgArray_Double cfg_OsmiaParasDailyMort("OSMIA_PARAS_DAILYMORT", CFG_CUST
 * temperature is required. Osmia_Population_Manager::Init() checks both conditions, since the
 * coefficients can be overridden from a configuration file. */
 static CfgFloat cfg_OsmiaPrepupalRateA("OSMIA_PREPUPALRATE_A", CFG_CUSTOM,  0.0149431912);
+/** @brief Linear coefficient B in the dimensionless prepupal rate quadratic q(T). */
 static CfgFloat cfg_OsmiaPrepupalRateB("OSMIA_PREPUPALRATE_B", CFG_CUSTOM, -0.6679153638);
+/** @brief Constant coefficient C in the dimensionless prepupal rate quadratic q(T). */
 static CfgFloat cfg_OsmiaPrepupalRateC("OSMIA_PREPUPALRATE_C", CFG_CUSTOM,  8.4616334666);
 /** \brief Temperature at which the prepupal rate function is normalised to 1.0, i.e. the stated
 * thermal optimum. Note that the analytic vertex of the parabola is at 22.35 C; the Formal Model
@@ -545,7 +547,8 @@ void Osmia_Population_Manager::Init()
 
 	// Calculates sexratio for egg lookups
 
-	// Create a data curve for 0 to 59 days for the sex ratio
+	// Create age-dependent lookup curves through at least day 60 and extend them
+	// when a longer adult lifespan is configured.
 	// Logistic(x | x0, min, max, k) = min + (max - min) / (1 + exp(-k * (x - x0)))
 	vector<double> params_logistic, params_lin, params_logistic2, params_lin2; // these are X0,min,max,k, and linear a,b respectively
 	params_logistic = cfg_OsmiaSexRatioVsMotherAgeLogistic.value();
@@ -554,9 +557,11 @@ void Osmia_Population_Manager::Init()
 	params_lin2 = Cfg_OsmiaFemaleCocoonMassVsMotherMassLinear.value();
 	params_logistic2 = Cfg_OsmiaFemaleCocoonMassVsMotherAgeLogistic.value();
 	femalecocoonmassvsagelogisticcurvedata curve2;
+	const unsigned adult_lookup_max_age = (Osmia_Base::GetFemaleLifespan() > 60)
+		? static_cast<unsigned>(Osmia_Base::GetFemaleLifespan()) : 60U;
 	for (double mass = cfg_OsmiaFemaleMassMin.value(); mass <= cfg_OsmiaFemaleMassMax.value(); mass += cfg_OsmiaAdultMassCategoryStep.value())
 	{
-		for (unsigned age = 0; age <= 60; age++)
+		for (unsigned age = 0; age <= adult_lookup_max_age; age++)
 		{
 			// Calculate the data for the egg sex ration curve
 			double adjustedmax = params_lin[0] * mass + params_lin[1];
@@ -1067,8 +1072,10 @@ void Osmia_Nest_Manager::InitOsmiaBeeNesting()
 			exit(1);
 		}
 		// We have the ref type, so now calculate the number of nests and set it
+		// Intentional operational scaling: the input density is converted to 0.001 of its supplied value
+		// before multiplication by polygon area. Retained by developer decision during MIDox review.
 		double n = (minOsmiaNests[found] + double(g_rand_uni_fnc()  * (maxOsmiaNests[found] - minOsmiaNests[found])))*0.001;
-		m_PolyList[e].SetMaxOsmiaNests(n); // ***CJT*** Added 0.001 scaler here to reduce densities for debug
+		m_PolyList[e].SetMaxOsmiaNests(n);
 		totalnests += m_PolyList[e].GetMaxNoNests(); // Just to have a record of the max possible nests
 	}
 }
