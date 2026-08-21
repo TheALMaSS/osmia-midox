@@ -204,8 +204,6 @@ extern CfgFloat cfg_OsmiaFemaleMassFromProvMassSlope;
 extern CfgInt	cfg_OsmiaTypicalHomingDistance;
 extern CfgInt cfg_OsmiaMaxHomingDistance;
 extern Landscape* g_landscape_ptr;
-extern CfgInt cfg_OsmiaForageSteps;
-extern CfgInt cfg_OsmiaDetailedMaskStep;
 
 // Assign default static member values (these will be changed later).
 double Osmia_Base::m_DailyDevelopmentMortEggs = 0;
@@ -270,9 +268,6 @@ double Osmia_Female::m_pollengiveupthreshold = 0.0;
 double Osmia_Female::m_pollengiveupreturn = 0.0;
 double Osmia_Female::m_OsmiaMaxPollen = 0.0;
 double Osmia_Female::m_OsmiaSugarPerDay = 0.0;
-OsmiaForageMask Osmia_Female::m_foragemask;
-OsmiaForageMaskDetailed Osmia_Female::m_foragemaskdetailed(1,600);
-int Osmia_Female::m_ForageSteps = 20;
 double Osmia_Female::m_PollenCompetitionsReductionScaler = cfg_OsmiaDensityDependentPollenRemovalConst.value();
 extern int g_thread_count;
 #ifdef __OSMIARECORDFORAGE
@@ -513,8 +508,6 @@ void Osmia_Population_Manager::Init()
 	Osmia_Female::SetParasitismProbToTimeCellOpen(cfg_OsmiaParasitismProbToTimeCellOpen.value());
 	Osmia_Female::SetUsingMechanisticParasitoids(cfg_UsingMechanisticParasitoids.value());
 	Osmia_Female::SetNestFindAttempts(cfg_OsmiaFemaleFindNestAttemptNo.value());
-	Osmia_Female::SetForageSteps(cfg_OsmiaForageSteps.value());
-	Osmia_Female::SetForageMaskDetailed(cfg_OsmiaDetailedMaskStep.value(), cfg_OsmiaTypicalHomingDistance.value());
 	Osmia_Female::SetPollenGiveUpThreshold(cfg_OsmiaPollenGiveUpThreshold.value());
 	Osmia_Female::SetPollenGiveUpReturn(cfg_OsmiaPollenGiveUpReturn.value());
 #ifdef __OSMIARECORDFORAGE

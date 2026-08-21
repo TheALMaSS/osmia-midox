@@ -143,8 +143,6 @@ extern CfgFloat l_pest_zero_threshold_animal;
 CfgInt cfg_OsmiaTypicalHomingDistance("OSMIA_TYPICALHOMINGDISTANCE", CFG_CUSTOM, 660); // 660 50% of bees cannot find their way home at this distance //this is static for now but can be related to female bee massclass
 /** @brief Upper homing-distance scale in metres used to scale dispersal draws. */
 CfgInt cfg_OsmiaMaxHomingDistance("OSMIA_MAXHOMINGDISTANCE", CFG_CUSTOM, 1430);  //  90% of bees cannot find their way home at this distance // EZ: change from 1430 to 715 generated negative numbers in pollen mask
-/** \brief Step size for the detailed forage mask. Step is each step out from the centre (min 1)*/
-CfgInt cfg_OsmiaDetailedMaskStep("OSMIA_DETAILEDMASKSTEP", CFG_CUSTOM, 1, 1, 100);
 // EZ: for now the distributions are the same but I'm leaving them separately if we would like to change that later
 /** @brief Distribution family used for adult dispersal distance. */
 static CfgStr cfg_OsmiaDispersalMovementProbType("OSMIA_DISPMOVPROBTYPE", CFG_CUSTOM, "BETA");
@@ -166,12 +164,6 @@ static CfgStr cfg_OsmiaEmergenceProbType("OSMIA_EMERGENCEPROBTYPE", CFG_CUSTOM, 
 static CfgStr cfg_OsmiaEmergenceProbArgs("OSMIA_EMERGENCEPROBARGS", CFG_CUSTOM, "8 7 9 24 20 8 6 5 5 4 4"); // data from A.Bednarska
 
 // Foraging
-/** @brief Number of radial steps used only to construct the retained legacy forage mask. */
-CfgInt cfg_OsmiaForageSteps("OSMIA_FORAGESTEPS", CFG_CUSTOM, 20); // How many distance steps between nest and max forage distance
-/** @brief Radial spacing in metres used only to construct the retained legacy forage mask.
- * @warning The mask is not consulted by the current square-window foraging search.
- */
-static CfgInt cfg_OsmiaForageMaskStepSZ("OSMIA_FORAGEMASKSTEPSZ", CFG_CUSTOM, cfg_OsmiaTypicalHomingDistance.value() / (cfg_OsmiaForageSteps.value() - 1)); // Best set to cfg_OsmiaMaxHomingDistance /19 (effectively/20)
 /** \brief A cap (mg) on the amount of pollen possible to bring back - this is because pollen densities in the landscape can be very high */
 static CfgFloat cfg_OsmiaMaxPollen("OSMIA_MAXPOLLEN", CFG_CUSTOM, 2.5);
 /** \brief The amount of sugar in mg that a female osmia needs per day.*/
@@ -936,6 +928,7 @@ void Osmia_Female::Init(double a_mass)
 	m_ForageLocY = -1;
 	m_NestProvisioningPlan = {};
 	m_NestProvisioningPlanSex = {};
+	m_NestOrder = 0;
 	m_BeeSizeScore1 = int(floor((m_Mass - m_FemaleMinMass)/((m_FemaleMaxMass - m_FemaleMinMass) / 3.0)+0.5)); // Scores bee size into four classes
 	if ((m_Mass < m_FemaleMinMass) || (m_Mass > m_FemaleMaxMass))
 	{
@@ -1319,11 +1312,13 @@ TTypeOfOsmiaState Osmia_Female::st_ReproductiveBehaviour(void)
 	if (m_OurNest == nullptr)
 	{
 		if (!FindNestLocation()) return toOsmias_Disperse; // Failed try again tomorrow (if she lives that long)
-		/** After a nest site is found she needs to develop a plan for laying eggs in the nest.
-		* This starts with determining the number of eggs based on a max/min range and a function for the first nest, then after that they decrease the nest size by 2 each time.
-		*/
-		m_EggsThisNest -= 2;
+		/** After a nest site is found she develops a new egg-number plan for that nest.
+		 * PlanEggsPerNest() makes an independent calibrated draw for every nest. The draw is
+		 * reduced by two eggs for each preceding nest to retain the calibrated nest-order decline.
+		 */
+		m_EggsThisNest = PlanEggsPerNest() - (2 * m_NestOrder);
 		if (m_EggsThisNest < m_OsmiaFemaleMinEggsPerNest) m_EggsThisNest = m_OsmiaFemaleMinEggsPerNest;
+		m_NestOrder++;
 		m_CurrentProvisioning = 0;
 
 		/**
@@ -1751,11 +1746,13 @@ void Osmia_Female::st_Dying(void)
 
 int Osmia_Female::PlanEggsPerNest()
 {
-	/** 
-	* Rescaled the result to bee biomass so that bigger bees produce more eggs \n
-	* no_eggs_in_first_nest = (Cfg_OsmiaMaxNoEggsInNest - Cfg_OsmiaMaxNoEggsInNest) * BETA(alpha = 1.8, beta = 5) 
-	* NB using m_BeeSizeScore1 is quicker than using m_BeeSizeScore2 and then translating to 0,1,2,3 since it is only calculated once in init
-	*/
+	/**
+	 * Draws the planned egg number independently for each new nest. The BETA distribution and
+	 * the additional two-egg shift applied with probability 0.45 are calibrated components of
+	 * the nest-size model. Maternal size alters the upper scale through m_BeeSizeScore1. The
+	 * caller applies the deterministic reduction of two eggs for each preceding nest and the
+	 * configured minimum after this draw.
+	 */
 	int shift = 0;
 	if (g_rand_uni_fnc() > 0.55) shift = 2;
 	return shift + m_OsmiaFemaleMinEggsPerNest + int(floor((0.5 + m_OsmiaFemaleMaxEggsPerNest + m_BeeSizeScore1 - m_OsmiaFemaleMinEggsPerNest)* m_eggspernestdistribution.Get()));
@@ -1837,57 +1834,4 @@ void Osmia_Nest::KillAllSubsequentCells(TAnimal* a_osmia)
 int Osmia_Nest::GetNoNests()
 {
 	return m_OurManager->GetNoNests(m_PolyRef);
-}
-
-OsmiaForageMask::OsmiaForageMask()
-{
-	/** 
-	* This is a simple distance mask which can be used to search outwards in even steps of cfg_OsmiaForageMaskStep 
-	* It represents 8 directions in 20 even steps of 1/19 the max homing distance. When used it will add another 1/19 to a randsom search start point from the next location.
-	* It is really a data class, and everything is publically accessible.
-	*/
-	m_step = cfg_OsmiaForageMaskStepSZ.value();
-	m_step2 = m_step * 2;
-	for (int i = 0; i < cfg_OsmiaForageSteps.value(); i++)
-	{
-		int distance = (i+1) * m_step;
-		m_mask[i][0][0] = distance;
-		m_mask[i][0][1] = distance;
-		m_mask[i][1][0] = distance;
-		m_mask[i][1][1] = 0;
-		m_mask[i][2][0] = distance;
-		m_mask[i][2][1] = distance * -1;
-
-		m_mask[i][3][0] = distance * -1;
-		m_mask[i][3][1] = distance;
-		m_mask[i][4][0] = distance * -1;
-		m_mask[i][4][1] = 0;
-		m_mask[i][5][0] = distance * -1;
-		m_mask[i][5][1] = distance * -1;
-
-		m_mask[i][6][0] = 0;
-		m_mask[i][6][1] = distance;
-		m_mask[i][7][0] = 0;
-		m_mask[i][7][1] = distance * -1;
-	}
-}
-
-OsmiaForageMaskDetailed::OsmiaForageMaskDetailed(int a_step, int a_maxdistance)
-{
-	/**
-	* This is a more detailed forage mask, the idea being that we start to work from the centre out reading the values under m_mask. 
-	* m_mask just holds offsets to the centre. The mask works as spokes in 8 directions each step distance apart up to the maxdistance.
-	* This allows weighting towards the current location.
-	*/
-	m_step = a_step;
-	m_maxdistance = a_maxdistance;
-	int rings = m_maxdistance / m_step;
-	m_mask.push_back(APoint(0, 0));
-	for (int r = 1; r <= rings; r++)
-	{
-		for (int d = 0; d < 8; d++)
-		{
-			m_mask.push_back(APoint(r * g_vector_x[d], r * g_vector_y[d]));
-		}
-	}
 }

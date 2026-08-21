@@ -92,70 +92,6 @@ enum class TTypeOfOsmiaParasitoids : unsigned // unsigned is used because this m
 };
 
 /**
- * \class OsmiaForageMask
- * \brief A pre-computed ring-and-bearing offset mask for foraging search.
- *
- * <b>Implementation Approach:</b>
- * Holds APoint offsets on a set of bearings at increasing radii, sized by @c cfg_OsmiaForageSteps and
- * @c cfg_OsmiaForageMaskStepSZ, so that a search can walk outward from the nest without recomputing
- * geometry.
- *
- * \warning This mask is constructed at initialisation and <b>never read</b>. Foraging is instead
- *          implemented as a square-window scan in Osmia_Female::Forage(). The configuration
- *          variables that size the mask therefore have no effect on model behaviour. The class is
- *          retained because a future ring-based search is expected to need it.
- *
- * \see OsmiaForageMaskDetailed, Osmia_Female
- */
-class OsmiaForageMask
-{
-	/**
-	* This is a way to speed up searches from a centre point. The predefined mask can be iterated through without having to calculate offsets.
-	* It could also be modified to alter distances between locations if needed by altering the step size.
-	*/
-public:
-	/** \brief Holds 20 distances and 8 directions with offsets to x,y */
-	int m_mask[20][8][2];
-	int m_step;
-	int m_step2;
-	/** @brief Constructs the currently unused 20-ring, eight-direction search mask. */
-	OsmiaForageMask();
-};
-
-/**
- * \class OsmiaForageMaskDetailed
- * \brief A 1 m resolution offset mask covering the typical homing distance.
- *
- * <b>Implementation Approach:</b>
- * A single flat vector of APoint offsets built ring by ring from radius zero outward, sized by
- * @c cfg_OsmiaDetailedMaskStep and @c cfg_OsmiaTypicalHomingDistance.
- *
- * \warning As with OsmiaForageMask, this mask is built at initialisation and never read; the
- *          configuration variables that size it have no effect on behaviour. Retained for a future
- *          ring-based search.
- *
- * \see OsmiaForageMask, Osmia_Female
- */
-class OsmiaForageMaskDetailed
-{
-	/**
-	* This is a way to speed up searches from a centre point. The predefined mask can be iterated through without having to calculate offsets.
-	* It could also be modified to alter distances between locations if needed by altering the step size.
-	*/
-public:
-	/** \brief Holds 20 distances and 8 directions with offsets to x,y */
-	vector<APoint> m_mask;
-	int m_step;
-	int m_maxdistance;
-	/**
-	 * @brief Constructs the currently unused detailed search mask.
-	 * @param a_step Radial interval between successive rings, in metres.
-	 * @param a_maxdistance Maximum radius represented by the mask, in metres.
-	 */
-	OsmiaForageMaskDetailed(int a_step, int a_maxdistance);
-};
-
-/**
  * \class OsmiaNestData
  * \brief Testing-only record of egg number, female number and cell provision masses for one nest.
  *
@@ -917,14 +853,9 @@ protected:
  * - Foraging, movement, mortality and parasitism are <b>not calibrated</b>; evaluation of those
  *   processes remains outstanding.
  *
- * \warning PlanEggsPerNest() contains <tt>if (g_rand_uni_fnc() > 0.55) shift = 2;</tt>, adding two
- *          eggs to 45% of nests. This has no counterpart in the Formal Model and no stated empirical
- *          basis. Its effect is currently absorbed into the fitted BETA shape rather than separately
- *          identified.
- * \warning PlanEggsPerNest() is called once per <b>female</b>, not once per nest. All between-nest
- *          variation within a female's lifetime therefore derives from a single draw made at
- *          emergence, modified only by the deterministic -2 ramp. Whether this is intended remains
- *          unresolved.
+ * \note PlanEggsPerNest() makes an independent calibrated draw for each nest. The calibrated
+ *       distribution includes a two-egg shift with probability 0.45; st_ReproductiveBehaviour()
+ *       then reduces the draw by two eggs for every preceding nest and applies the configured floor.
  * \warning Init() terminates the program with <tt>std::exit()</tt> if a female's mass falls outside
  *          [@c cfg_OsmiaFemaleMassMin, @c cfg_OsmiaFemaleMassMax]. This is presently unreachable, because
  *          the provisioning target and the founding cohort both derive their bounds from the same
@@ -961,8 +892,6 @@ public:
 #endif
 protected:
 	//Attributes
-	static OsmiaForageMask m_foragemask;
-	static OsmiaForageMaskDetailed m_foragemaskdetailed;
 	double m_currentpollenlevel;
 	/** \brief The change in pollen return that triggers a new search */
 	static double m_pollengiveupthreshold;
@@ -982,6 +911,8 @@ protected:
 	int m_EggsToLay;
 	/** \brief Keeps a track of the planned number of eggs for this nest */
 	int m_EggsThisNest;
+	/** \brief Zero-based order of the next nest, used for the calibrated two-egg decline between nests. */
+	int m_NestOrder;
 	/** \brief a flag determining if dispersal is necessary */
 	bool m_ToDisperse;
 	/** \brief The number of days of post emergence life */
@@ -1006,8 +937,6 @@ protected:
 	bool m_ForageLoc;
 	/** \brief Index to the resource providing polygon lists in the Osmia_Population_Manager */
 	int m_ForageLocPoly;
-	/** \brief The number of distance steps from nest to max forage range */
-	static int m_ForageSteps;
 	/** \brief An attribute used to scale the available pollen based on assumed competetion from other bee species */
 	static double m_PollenCompetitionsReductionScaler;
 	/** \brief A vector holding the age related efficiency of Osmia foraging indexed by day (from Seidelmann 2006) */
@@ -1077,7 +1006,10 @@ protected:
 	double Forage(void);
 	/** \brief This checks for the need to do something regarding reproduction and does it if necessary. */
 	virtual TTypeOfOsmiaState st_ReproductiveBehaviour(void);
-	/** \brief Calculates the planned number of eggs for the next nest. */
+	/**
+	 * \brief Draws the calibrated planned egg number for one nest before the nest-order reduction.
+	 * \return Egg-number draw including maternal-size scaling and the calibrated 0.45 two-egg shift.
+	 */
 	int PlanEggsPerNest();
 	/** \brief This calculates the number of eggs the female should lay. */
 	void CalculateEggLoad() {
@@ -1088,7 +1020,7 @@ protected:
 		* total_no_eggs = N * no_eggs_nest
 		*/
 		m_EggsToLay = int((m_TotalNestsPossible * (0.0371 * m_Mass + 2.8399)) + (g_rand_uni_fnc() * 6) - 3);
-		m_EggsThisNest = PlanEggsPerNest() + 2; // 2 is added because it will be removed at the start of each nest
+		m_EggsThisNest = 0; // Planned independently when each nest is founded.
 	}
 	/** \brief Determines the type of parasitoid if any */
 	TTypeOfOsmiaParasitoids CalcParaistised(double a_daysopen);
@@ -1108,13 +1040,6 @@ public:
 	virtual void BeginStep(void);
 	/** \brief The Step is the second 'part' of the timestep that an animal can behave in. It is called continuously until all animals report that they are 'DONE'. */
 	virtual void Step(void);
-	/** @brief Stores the configured ring count for the unused legacy forage mask. */
-	static void SetForageSteps(int a_sz) { m_ForageSteps = a_sz; }
-	/** \brief Initialise the detailed forage mask */
-	static void SetForageMaskDetailed(int a_step, int a_max) {
-		OsmiaForageMaskDetailed fmd(a_step, a_max);
-		m_foragemaskdetailed = fmd;
-	}
 	/** \brief Record the give up level for pollen from a forage patch we are foraging from */
 	static void SetPollenGiveUpThreshold(double a_prop) { m_pollengiveupthreshold = a_prop; }
 	/** \brief Record the give up level for pollen from a forage patch we are foraging from */
